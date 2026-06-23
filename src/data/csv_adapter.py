@@ -10,10 +10,15 @@ adjustment) — so a generic CSV someone drops in is treated as real data with a
 *honest* "adjustment unknown" label, while the shipped sample files carry
 sidecars marking them synthetic.
 
+When ``real_dir`` is provided, the adapter checks there first for each
+instrument. If a real CSV exists, it is used instead of the synthetic sample.
+This lets manually imported real data override demo data automatically.
+
 Keep this as the offline/debug path. Add a real vendor adapter later behind the
 same ``MarketDataAdapter`` interface — nothing downstream changes.
 
-CSV format (header required): ts,open,high,low,close,volume
+CSV format (header required): date,open,high,low,close,volume
+Legacy format with ``ts`` instead of ``date`` is also accepted.
 """
 
 from __future__ import annotations
@@ -26,21 +31,40 @@ from .base import DataMeta, MarketDataAdapter
 
 
 class CsvAdapter(MarketDataAdapter):
-    def __init__(self, data_dir: str, default_meta: DataMeta | None = None):
+    def __init__(self, data_dir: str, default_meta: DataMeta | None = None,
+                 real_dir: str | None = None):
         self.data_dir = data_dir
+        self.real_dir = real_dir
         self.default_meta = default_meta or DataMeta(
             source="csv", synthetic=False, adjustment="unknown"
         )
 
+    def _resolve_path(self, instrument: str) -> str:
+        if self.real_dir:
+            real_path = os.path.join(self.real_dir, f"{instrument}.csv")
+            if os.path.exists(real_path):
+                return real_path
+        fallback = os.path.join(self.data_dir, f"{instrument}.csv")
+        if not os.path.exists(fallback):
+            raise FileNotFoundError(f"No data for {instrument} (checked "
+                                    f"{self.real_dir or 'no real_dir'} and {self.data_dir})")
+        return fallback
+
+    def _resolve_meta_dir(self, instrument: str) -> str:
+        if self.real_dir:
+            real_path = os.path.join(self.real_dir, f"{instrument}.csv")
+            if os.path.exists(real_path):
+                return self.real_dir
+        return self.data_dir
+
     def bars(self, instrument: str, timeframe: str = "1d", limit: int = 500) -> list[dict]:
-        path = os.path.join(self.data_dir, f"{instrument}.csv")
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"No sample data for {instrument} at {path}")
+        path = self._resolve_path(instrument)
         rows: list[dict] = []
         with open(path, newline="", encoding="utf-8") as fh:
             for row in csv.DictReader(fh):
+                ts = row.get("date") or row.get("ts", "")
                 rows.append({
-                    "ts": row["ts"],
+                    "ts": ts,
                     "open": float(row["open"]),
                     "high": float(row["high"]),
                     "low": float(row["low"]),
@@ -51,7 +75,8 @@ class CsvAdapter(MarketDataAdapter):
         return rows[-limit:]
 
     def meta(self, instrument: str) -> DataMeta:
-        sidecar = os.path.join(self.data_dir, f"{instrument}.meta.json")
+        meta_dir = self._resolve_meta_dir(instrument)
+        sidecar = os.path.join(meta_dir, f"{instrument}.meta.json")
         if os.path.exists(sidecar):
             with open(sidecar, encoding="utf-8") as fh:
                 d = json.load(fh)

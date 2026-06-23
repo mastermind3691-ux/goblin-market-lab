@@ -39,7 +39,7 @@ def concentration(returns: list[float]) -> dict:
             "top1_share": round(top1, 3), "top3_share": round(top3, 3), "note": note}
 
 
-def build_scorecard(result: BacktestResult, meta: DataMeta) -> dict:
+def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
     report = expectancy_report(result.returns)
     strat_return = compounded_return(result.returns)
     bh_return = result.buy_and_hold_return
@@ -88,6 +88,14 @@ def build_scorecard(result: BacktestResult, meta: DataMeta) -> dict:
 
     gate = candidate_status(recommendation="Research-only. Keep collecting evidence.")
 
+    bars = kwargs.get("bars", [])
+    date_range = None
+    if bars:
+        ts_first = bars[0].get("ts", "")
+        ts_last = bars[-1].get("ts", "")
+        if ts_first and ts_last:
+            date_range = (ts_first, ts_last)
+
     return {
         "strategy": result.strategy,
         "instrument": result.instrument,
@@ -98,6 +106,9 @@ def build_scorecard(result: BacktestResult, meta: DataMeta) -> dict:
         "synthetic": meta.synthetic,
         "price_adjustment": meta.adjustment,
         "evidence_grade": grade,
+        # data range
+        "bar_count": result.n_bars,
+        "date_range": date_range,
         # evidence
         "trades": report.n,
         "win_rate": round(report.win_rate, 4),

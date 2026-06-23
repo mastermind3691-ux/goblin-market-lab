@@ -40,6 +40,9 @@
       <div class="muted">
         strategy return: {{ c.strategy_return }} &middot; buy &amp; hold: {{ c.buy_and_hold_return }}
       </div>
+      <div class="muted">
+        source: {{ c.data_source }} &middot; bars: {{ c.bar_count }}{% if c.date_range %} &middot; {{ c.date_range[0] }} to {{ c.date_range[1] }}{% endif %}
+      </div>
       {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
       <div class="muted" style="margin-top:6px">human approval required: {{ c.required_human_approval }} &middot;
         pilot-ready: {{ c.ready_for_pilot }}</div>

@@ -25,6 +25,7 @@ from ..safety.gate import safety_state
 from ..scorecard.scorecard import build_scorecard
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
+REAL_DIR = os.path.join(DATA_DIR, "real")
 
 
 def _strategies():
@@ -35,7 +36,8 @@ def _strategies():
 
 
 def compute_scorecards() -> list[dict]:
-    adapter = CsvAdapter(DATA_DIR)
+    real = REAL_DIR if os.path.isdir(REAL_DIR) else None
+    adapter = CsvAdapter(DATA_DIR, real_dir=real)
     cards: list[dict] = []
     for symbol, inst in INSTRUMENTS.items():
         try:
@@ -45,7 +47,7 @@ def compute_scorecards() -> list[dict]:
         for strat in _strategies():
             meta = adapter.meta(symbol)
             result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
-            cards.append(build_scorecard(result, meta))
+            cards.append(build_scorecard(result, meta, bars=bars))
     return cards
 
 

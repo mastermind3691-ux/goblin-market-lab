@@ -16,17 +16,19 @@ from src.strategies.sma_dip import SmaDip
 from src.strategies.trend_filter import TrendFilter
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
+REAL_DIR = os.path.join(DATA_DIR, "real")
 
 
 def main() -> None:
-    adapter = CsvAdapter(DATA_DIR)
+    real = REAL_DIR if os.path.isdir(REAL_DIR) else None
+    adapter = CsvAdapter(DATA_DIR, real_dir=real)
     strategies = [SmaDip(), TrendFilter()]
     for symbol, inst in INSTRUMENTS.items():
         bars = adapter.bars(symbol, limit=2000)
         meta = adapter.meta(symbol)
         for strat in strategies:
             result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
-            card = build_scorecard(result, meta)
+            card = build_scorecard(result, meta, bars=bars)
             print(f"\n[{card['strategy']} on {card['instrument']}] {card['headline']}")
             print(f"  {card['verdict']}")
             print(f"  data={card['data_source']} ({card['evidence_grade']}, "

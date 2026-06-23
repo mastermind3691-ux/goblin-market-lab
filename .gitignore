@@ -5,3 +5,5 @@ __pycache__/
 paper_state.json
 paper_state.json.tmp
 *.incompatible.*.json
+data/real/*.csv
+data/real/*.meta.json

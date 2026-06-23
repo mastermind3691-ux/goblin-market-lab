@@ -23,11 +23,14 @@ from typing import Any, Optional
 
 def _fsync_parent_dir(path: str) -> None:
     parent = os.path.dirname(os.path.abspath(path)) or "."
-    fd = os.open(parent, os.O_RDONLY)
+    try:
+        fd = os.open(parent, os.O_RDONLY)
+    except (OSError, PermissionError):
+        return  # Windows doesn't allow opening directories with O_RDONLY.
     try:
         os.fsync(fd)
     except OSError:
-        pass  # Some filesystems (and Windows) don't support directory fsync.
+        pass  # Some filesystems don't support directory fsync.
     finally:
         os.close(fd)
 

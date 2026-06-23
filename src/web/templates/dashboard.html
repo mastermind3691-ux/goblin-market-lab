@@ -41,7 +41,10 @@
         strategy return: {{ c.strategy_return }} &middot; buy &amp; hold: {{ c.buy_and_hold_return }}
       </div>
       <div class="muted">
-        source: {{ c.data_source }} &middot; bars: {{ c.bar_count }}{% if c.date_range %} &middot; {{ c.date_range[0] }} to {{ c.date_range[1] }}{% endif %}
+        source: {{ c.data_source }} &middot; bars tested: {{ c.bars_tested }} of {{ c.available_bars }} available{% if c.date_range_tested %} &middot; tested window: {{ c.date_range_tested[0] }} to {{ c.date_range_tested[1] }}{% endif %}
+      </div>
+      <div class="muted">
+        exposure: {{ (c.exposure_pct * 100)|round(1) }}% time in market &middot; last bar: {{ c.last_bar_date or "unknown" }}{% if c.data_is_stale %} <span class="pill warn">stale data</span>{% endif %}
       </div>
       {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
       <div class="muted" style="margin-top:6px">human approval required: {{ c.required_human_approval }} &middot;

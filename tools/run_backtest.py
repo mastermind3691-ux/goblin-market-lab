@@ -24,15 +24,20 @@ def main() -> None:
     adapter = CsvAdapter(DATA_DIR, real_dir=real)
     strategies = [SmaDip(), TrendFilter()]
     for symbol, inst in INSTRUMENTS.items():
-        bars = adapter.bars(symbol, limit=2000)
+        all_bars = adapter.bars(symbol, limit=999_999)
+        bars = all_bars[-2000:]
         meta = adapter.meta(symbol)
         for strat in strategies:
             result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
-            card = build_scorecard(result, meta, bars=bars)
+            card = build_scorecard(result, meta, bars=bars,
+                                   available_bars=len(all_bars))
             print(f"\n[{card['strategy']} on {card['instrument']}] {card['headline']}")
             print(f"  {card['verdict']}")
             print(f"  data={card['data_source']} ({card['evidence_grade']}, "
                   f"adjustment={card['price_adjustment']})")
+            print(f"  bars tested={card['bars_tested']} available={card['available_bars']} "
+                  f"last_bar={card['last_bar_date']} "
+                  f"stale={card['data_is_stale']} exposure={card['exposure_pct']}")
             print(f"  trades={card['trades']} win_rate={card['win_rate']} "
                   f"strat_return={card['strategy_return']} vs buy&hold={card['buy_and_hold_return']} "
                   f"({card['vs_benchmark']})")

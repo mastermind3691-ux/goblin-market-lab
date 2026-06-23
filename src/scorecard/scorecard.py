@@ -7,9 +7,12 @@ Honesty rules enforced here:
 4. Synthetic data is gated: numbers are shown but NEVER labelled as evidence.
 5. Surfaces data provenance: source, synthetic flag, split/dividend adjustment.
 6. Evidence language only — no predictions (guarded by tests/language.py).
+7. Surfaces data freshness and exposure so humans can judge staleness and risk.
 """
 
 from __future__ import annotations
+
+from datetime import date, datetime
 
 from ..backtest.engine import BacktestResult, compounded_return
 from ..backtest.expectancy import expectancy_report
@@ -18,6 +21,7 @@ from ..safety.gate import candidate_status
 
 CONCENTRATION_TOP1_LIMIT = 0.50   # one trade >50% of gross profit -> flag
 CONCENTRATION_TOP3_LIMIT = 0.80   # top three >80% -> flag
+STALE_DATA_DAYS = 30
 
 
 def concentration(returns: list[float]) -> dict:
@@ -39,11 +43,46 @@ def concentration(returns: list[float]) -> dict:
             "top1_share": round(top1, 3), "top3_share": round(top3, 3), "note": note}
 
 
+def _parse_bar_date(ts: str) -> date | None:
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y"):
+        try:
+            return datetime.strptime(ts.strip(), fmt).date()
+        except (ValueError, AttributeError):
+            continue
+    return None
+
+
+def _data_freshness(bars: list[dict], today: date | None = None) -> dict:
+    today = today or date.today()
+    if not bars:
+        return {"last_bar_date": None, "data_age_days": None, "data_is_stale": True}
+    last_ts = bars[-1].get("ts", "")
+    last_date = _parse_bar_date(last_ts)
+    if last_date is None:
+        return {"last_bar_date": last_ts, "data_age_days": None, "data_is_stale": True}
+    age = (today - last_date).days
+    return {
+        "last_bar_date": last_date.isoformat(),
+        "data_age_days": age,
+        "data_is_stale": age > STALE_DATA_DAYS,
+    }
+
+
+def _exposure_pct(result: BacktestResult) -> float:
+    if result.bars_tested <= 0:
+        return 0.0
+    return round(result.bars_in_position / result.bars_tested, 4)
+
+
+LOW_EXPOSURE_THRESHOLD = 0.50
+
+
 def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
     report = expectancy_report(result.returns)
     strat_return = compounded_return(result.returns)
     bh_return = result.buy_and_hold_return
     conc = concentration(result.returns)
+    exposure = _exposure_pct(result)
 
     # Benchmark comparison (only meaningful with real data + some trades).
     if not result.returns:
@@ -77,9 +116,15 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
     else:
         parts.append(report.verdict)
         if result.returns:
-            cmp_word = "beat" if vs_benchmark == "beats" else "lagged"
-            parts.append(f"Historically tested, the strategy {cmp_word} buy-and-hold "
-                         f"({strat_return*100:.1f}% vs {bh_return*100:.1f}% over the window).")
+            if vs_benchmark == "beats":
+                cmp_phrase = "beat buy-and-hold"
+            elif exposure < LOW_EXPOSURE_THRESHOLD:
+                cmp_phrase = "lagged buy-and-hold, but with lower market exposure"
+            else:
+                cmp_phrase = "lagged buy-and-hold"
+            parts.append(f"Historically tested, the strategy {cmp_phrase} "
+                         f"({strat_return*100:.1f}% vs {bh_return*100:.1f}% over the window, "
+                         f"{exposure*100:.0f}% time in market).")
         if grade == "real_unverified_adjustment":
             parts.append("Data adjustment for splits/dividends is unknown, so equity "
                          "returns may be distorted. Treat as research-only.")
@@ -89,12 +134,15 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
     gate = candidate_status(recommendation="Research-only. Keep collecting evidence.")
 
     bars = kwargs.get("bars", [])
-    date_range = None
+    available_bars = kwargs.get("available_bars", len(bars))
+    freshness = _data_freshness(bars, today=kwargs.get("today"))
+
+    tested_range = None
     if bars:
         ts_first = bars[0].get("ts", "")
         ts_last = bars[-1].get("ts", "")
         if ts_first and ts_last:
-            date_range = (ts_first, ts_last)
+            tested_range = (ts_first, ts_last)
 
     return {
         "strategy": result.strategy,
@@ -106,9 +154,16 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
         "synthetic": meta.synthetic,
         "price_adjustment": meta.adjustment,
         "evidence_grade": grade,
-        # data range
-        "bar_count": result.n_bars,
-        "date_range": date_range,
+        # data freshness
+        "last_bar_date": freshness["last_bar_date"],
+        "data_age_days": freshness["data_age_days"],
+        "data_is_stale": freshness["data_is_stale"],
+        # bars clarity
+        "bars_tested": result.n_bars,
+        "available_bars": available_bars,
+        "date_range_tested": tested_range,
+        # exposure
+        "exposure_pct": exposure,
         # evidence
         "trades": report.n,
         "win_rate": round(report.win_rate, 4),

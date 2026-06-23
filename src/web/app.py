@@ -41,13 +41,15 @@ def compute_scorecards() -> list[dict]:
     cards: list[dict] = []
     for symbol, inst in INSTRUMENTS.items():
         try:
-            bars = adapter.bars(symbol, limit=2000)
+            all_bars = adapter.bars(symbol, limit=999_999)
+            bars = all_bars[-2000:]
         except FileNotFoundError:
             continue
         for strat in _strategies():
             meta = adapter.meta(symbol)
             result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
-            cards.append(build_scorecard(result, meta, bars=bars))
+            cards.append(build_scorecard(result, meta, bars=bars,
+                                         available_bars=len(all_bars)))
     return cards
 
 

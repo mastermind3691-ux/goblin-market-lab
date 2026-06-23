@@ -25,6 +25,8 @@ class BacktestResult:
     trades: list[dict] = field(default_factory=list)
     buy_and_hold_return: float = 0.0                     # over the active window
     warmup: int = 0
+    bars_in_position: int = 0
+    bars_tested: int = 0
 
 
 def backtest(
@@ -46,10 +48,16 @@ def backtest(
         if start_close:
             result.buy_and_hold_return = (end_close - start_close) / start_close
 
+    active_bars = len(bars) - warmup
+    bars_in_pos = 0
+
     for i in range(warmup, len(bars)):
         window = bars[: i + 1]                 # no look-ahead
         price = window[-1]["close"]
         sig = strategy.signal(window, position_open)
+
+        if position_open:
+            bars_in_pos += 1
 
         if sig is Signal.BUY and not position_open:
             position_open = True
@@ -63,6 +71,8 @@ def backtest(
                                   "price": price, "return": net})
             position_open = False
 
+    result.bars_in_position = bars_in_pos
+    result.bars_tested = active_bars
     return result
 
 

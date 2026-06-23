@@ -7,3 +7,5 @@ paper_state.json.tmp
 *.incompatible.*.json
 data/real/*.csv
 data/real/*.meta.json
+data/raw/*
+!data/raw/README.md

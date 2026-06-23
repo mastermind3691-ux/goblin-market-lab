@@ -21,11 +21,15 @@ from .auth import require_auth
 from ..backtest.engine import backtest
 from ..data.csv_adapter import CsvAdapter
 from ..instruments.registry import INSTRUMENTS
+from ..paper.persistence import load_json
+from ..paper.shadow_tracker import ShadowTracker
 from ..safety.gate import safety_state
 from ..scorecard.scorecard import build_scorecard
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 REAL_DIR = os.path.join(DATA_DIR, "real")
+SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
+                         os.path.join(os.path.dirname(__file__), "..", "..", "shadow_state.json"))
 
 
 def _strategies():
@@ -53,6 +57,13 @@ def compute_scorecards() -> list[dict]:
     return cards
 
 
+def shadow_summary() -> dict:
+    saved = load_json(SHADOW_PATH)
+    if not saved:
+        return ShadowTracker().summary()
+    return ShadowTracker.from_dict(saved).summary()
+
+
 def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates")
 
@@ -71,6 +82,7 @@ def create_app() -> Flask:
                 "verdict": s.verdict,
             },
             "scorecards": compute_scorecards(),
+            "shadow_summary": shadow_summary(),
         })
 
     @app.get("/")
@@ -78,7 +90,8 @@ def create_app() -> Flask:
     def index():
         return render_template("dashboard.html",
                                safety=safety_state(),
-                               scorecards=compute_scorecards())
+                               scorecards=compute_scorecards(),
+                               shadow=shadow_summary())
 
     return app
 

@@ -4,6 +4,8 @@ __pycache__/
 .env
 paper_state.json
 paper_state.json.tmp
+shadow_state.json
+shadow_state.json.tmp
 *.incompatible.*.json
 data/real/*.csv
 data/real/*.meta.json

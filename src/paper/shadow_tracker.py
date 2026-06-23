@@ -1,34 +1,236 @@
 """Shadow / paper-forward tracker.
 
-Records what a strategy WOULD do on each new completed bar, going forward, and
-the outcome a few bars later. It never executes anything and never feeds a real
-order. This is how you collect forward (out-of-sample) evidence to compare
-against the backtest — the honest counterweight to curve-fitting.
+Records what a strategy WOULD signal on each completed bar and the outcome a
+few bars later. It never executes anything, never feeds a real order, and never
+mutates a portfolio.
 
-For v0.1 this is a thin, persistable record. Wire it to a scheduled bar-close
-job once the backtest loop is trusted.
+Two record origins are distinguished honestly:
+
+- ``historical_bootstrap``: created by walking already-available historical data.
+  Useful for pipeline validation and baseline measurement, but NOT true
+  out-of-sample forward evidence (the data existed before the signal was
+  recorded).
+- ``forward_observed``: reserved for signals observed on newly arrived bars
+  after the tracker was deployed. Only these count as true forward evidence.
+
+Design:
+- Only BUY signals are recorded. These strategies are long-only; BUY is the
+  actionable entry decision. SELL just closes, so measuring "what happens after
+  a BUY signal" is the clean forward-evidence question.
+- Each record has a deterministic key (strategy:instrument:ts) so re-running
+  the observer never creates duplicates.
+- Outcomes are resolved at 5-bar and 20-bar horizons once enough future bars
+  exist. outcome_return = future_close / entry_close - 1.
+- No portfolio, no compounding, no order simulation.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
+
+from ..strategies.base import Signal, Strategy
+
+HORIZONS = (5, 20)
+MIN_SHADOW_SAMPLES = 20
+
+ORIGIN_HISTORICAL = "historical_bootstrap"
+ORIGIN_FORWARD = "forward_observed"
+
+
+@dataclass
+class ShadowRecord:
+    key: str
+    strategy: str
+    instrument: str
+    signal_date: str
+    signal_type: str
+    entry_price: float
+    origin: str = ORIGIN_HISTORICAL
+    data_source: str = ""
+    adjustment: str = "unknown"
+    outcomes: dict[str, Any] = field(default_factory=dict)
+
+    def is_fully_resolved(self) -> bool:
+        return all(f"h{h}" in self.outcomes for h in HORIZONS)
+
+    def to_dict(self) -> dict:
+        return {
+            "key": self.key,
+            "strategy": self.strategy,
+            "instrument": self.instrument,
+            "signal_date": self.signal_date,
+            "signal_type": self.signal_type,
+            "entry_price": self.entry_price,
+            "origin": self.origin,
+            "data_source": self.data_source,
+            "adjustment": self.adjustment,
+            "outcomes": dict(self.outcomes),
+        }
+
+    @classmethod
+    def from_dict(cls, d: dict) -> ShadowRecord:
+        return cls(
+            key=d["key"], strategy=d["strategy"], instrument=d["instrument"],
+            signal_date=d["signal_date"], signal_type=d["signal_type"],
+            entry_price=d["entry_price"],
+            origin=d.get("origin", ORIGIN_HISTORICAL),
+            data_source=d.get("data_source", ""),
+            adjustment=d.get("adjustment", "unknown"),
+            outcomes=dict(d.get("outcomes", {})),
+        )
+
+
+def _make_key(strategy: str, instrument: str, ts: str) -> str:
+    return f"{strategy}:{instrument}:{ts}"
 
 
 @dataclass
 class ShadowTracker:
-    records: list[dict] = field(default_factory=list)
+    records: list[ShadowRecord] = field(default_factory=list)
+    _index: dict[str, int] = field(default_factory=dict, repr=False)
 
-    def observe(self, strategy: str, instrument: str, ts: str, signal: str, price: float) -> None:
-        self.records.append({
-            "strategy": strategy, "instrument": instrument,
-            "ts": ts, "signal": signal, "price": price, "outcome": None,
-        })
+    def __post_init__(self) -> None:
+        self._rebuild_index()
+
+    def _rebuild_index(self) -> None:
+        self._index = {r.key: i for i, r in enumerate(self.records)}
+
+    def observe(self, strategy: str, instrument: str, ts: str,
+                signal: str, price: float,
+                origin: str = ORIGIN_HISTORICAL,
+                data_source: str = "", adjustment: str = "unknown") -> bool:
+        key = _make_key(strategy, instrument, ts)
+        if key in self._index:
+            return False
+        rec = ShadowRecord(
+            key=key, strategy=strategy, instrument=instrument,
+            signal_date=ts, signal_type=signal, entry_price=price,
+            origin=origin, data_source=data_source, adjustment=adjustment,
+        )
+        self._index[key] = len(self.records)
+        self.records.append(rec)
+        return True
+
+    def observe_bars(self, strat: Strategy, instrument: str,
+                     bars: list[dict], warmup: int = 100,
+                     origin: str = ORIGIN_HISTORICAL,
+                     data_source: str = "", adjustment: str = "unknown") -> int:
+        """Walk bars and record BUY signals. No look-ahead."""
+        added = 0
+        position_open = False
+        for i in range(warmup, len(bars)):
+            window = bars[:i + 1]
+            sig = strat.signal(window, position_open)
+            if sig is Signal.BUY and not position_open:
+                ts = window[-1]["ts"]
+                price = window[-1]["close"]
+                if self.observe(strat.name, instrument, ts, "BUY", price,
+                                origin, data_source, adjustment):
+                    added += 1
+                position_open = True
+            elif sig is Signal.SELL and position_open:
+                position_open = False
+        return added
+
+    def resolve_outcomes(self, instrument: str, bars: list[dict]) -> int:
+        """Resolve pending outcomes for records matching this instrument."""
+        ts_to_idx: dict[str, int] = {}
+        for i, b in enumerate(bars):
+            ts_to_idx[b["ts"]] = i
+
+        resolved = 0
+        for rec in self.records:
+            if rec.instrument != instrument:
+                continue
+            if rec.is_fully_resolved():
+                continue
+            bar_idx = ts_to_idx.get(rec.signal_date)
+            if bar_idx is None:
+                continue
+            for h in HORIZONS:
+                h_key = f"h{h}"
+                if h_key in rec.outcomes:
+                    continue
+                future_idx = bar_idx + h
+                if future_idx < len(bars):
+                    future_close = bars[future_idx]["close"]
+                    ret = (future_close / rec.entry_price) - 1.0 if rec.entry_price else 0.0
+                    rec.outcomes[h_key] = {
+                        "horizon": h,
+                        "future_date": bars[future_idx]["ts"],
+                        "future_close": future_close,
+                        "return_pct": round(ret, 6),
+                    }
+                    resolved += 1
+        return resolved
+
+    def summary(self) -> dict:
+        total = len(self.records)
+        resolved = sum(1 for r in self.records if r.is_fully_resolved())
+        pending = total - resolved
+
+        n_historical = sum(1 for r in self.records if r.origin == ORIGIN_HISTORICAL)
+        n_forward = sum(1 for r in self.records if r.origin == ORIGIN_FORWARD)
+
+        def _h_returns(origin_filter: str | None) -> dict[str, list[float]]:
+            h_ret: dict[str, list[float]] = {f"h{h}": [] for h in HORIZONS}
+            for rec in self.records:
+                if origin_filter and rec.origin != origin_filter:
+                    continue
+                for h in HORIZONS:
+                    h_key = f"h{h}"
+                    if h_key in rec.outcomes:
+                        h_ret[h_key].append(rec.outcomes[h_key]["return_pct"])
+            return h_ret
+
+        all_h = _h_returns(None)
+        fwd_h = _h_returns(ORIGIN_FORWARD)
+        hist_h = _h_returns(ORIGIN_HISTORICAL)
+
+        fwd_h5 = fwd_h["h5"]
+        hist_h5 = hist_h["h5"]
+        all_h5 = all_h["h5"]
+        all_h20 = all_h["h20"]
+
+        forward_enough = n_forward >= MIN_SHADOW_SAMPLES and len(fwd_h5) >= MIN_SHADOW_SAMPLES
+
+        hit_rate = round(sum(1 for r in all_h5 if r > 0) / len(all_h5), 4) if all_h5 else None
+        avg_h5 = round(sum(all_h5) / len(all_h5), 6) if all_h5 else None
+        avg_h20 = round(sum(all_h20) / len(all_h20), 6) if all_h20 else None
+
+        if n_forward == 0:
+            verdict = "Historical shadow replay available — forward evidence not started"
+        elif not forward_enough:
+            verdict = "Forward shadow evidence collecting — not enough data"
+        else:
+            verdict = "Forward shadow evidence available — review only"
+
+        return {
+            "total": total,
+            "historical_bootstrap": n_historical,
+            "forward_observed": n_forward,
+            "pending": pending,
+            "resolved": resolved,
+            "historical_sample_size": len(hist_h5),
+            "forward_sample_size": len(fwd_h5),
+            "hit_rate_5bar": hit_rate,
+            "avg_return_5bar": avg_h5,
+            "avg_return_20bar": avg_h20,
+            "enough_data": forward_enough,
+            "verdict": verdict,
+            "trade_impact": "none",
+            "paper_portfolio_impact": "none",
+            "required_human_approval": True,
+            "ready_for_pilot": False,
+        }
 
     def to_dict(self) -> dict:
-        return {"records": list(self.records)}
+        return {"records": [r.to_dict() for r in self.records]}
 
     @classmethod
-    def from_dict(cls, data: dict) -> "ShadowTracker":
+    def from_dict(cls, data: dict) -> ShadowTracker:
         t = cls()
-        t.records = list(data.get("records", []))
+        t.records = [ShadowRecord.from_dict(d) for d in data.get("records", [])]
+        t._rebuild_index()
         return t

@@ -55,5 +55,29 @@
       <div class="muted">Add CSVs to /data and refresh.</div></div>
     {% endfor %}
   </div>
+
+  <div style="margin-top:18px">
+    <div class="card">
+      <div class="headline">Shadow Replay / Forward Evidence</div>
+      <div class="muted">{{ shadow.verdict }}</div>
+      <div class="muted" style="margin-top:6px">
+        total: {{ shadow.total }} &middot;
+        historical bootstrap: {{ shadow.historical_bootstrap }} &middot;
+        forward observed: {{ shadow.forward_observed }}
+      </div>
+      <div class="muted" style="margin-top:4px">
+        resolved: {{ shadow.resolved }} &middot; pending: {{ shadow.pending }}
+        {% if shadow.hit_rate_5bar is not none %} &middot; hit rate (5-bar): {{ (shadow.hit_rate_5bar * 100)|round(1) }}%{% endif %}
+        {% if shadow.avg_return_5bar is not none %} &middot; avg return (5-bar): {{ (shadow.avg_return_5bar * 100)|round(2) }}%{% endif %}
+        {% if shadow.avg_return_20bar is not none %} &middot; avg return (20-bar): {{ (shadow.avg_return_20bar * 100)|round(2) }}%{% endif %}
+      </div>
+      <div class="muted" style="margin-top:4px">
+        historical sample size: {{ shadow.historical_sample_size }} &middot;
+        forward sample size: {{ shadow.forward_sample_size }} &middot;
+        enough forward data: {{ shadow.enough_data }}
+      </div>
+      <div class="muted" style="margin-top:4px">No trades placed. No paper portfolio impact.</div>
+    </div>
+  </div>
 </body>
 </html>

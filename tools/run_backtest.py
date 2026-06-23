@@ -1,0 +1,40 @@
+"""CLI: run the backtest + scorecard for every instrument/strategy and print
+the honest verdicts. Runs fully offline against /data CSVs.
+
+    python -m tools.run_backtest
+"""
+
+from __future__ import annotations
+
+import os
+
+from src.backtest.engine import backtest
+from src.data.csv_adapter import CsvAdapter
+from src.instruments.registry import INSTRUMENTS
+from src.scorecard.scorecard import build_scorecard
+from src.strategies.sma_dip import SmaDip
+from src.strategies.trend_filter import TrendFilter
+
+DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
+
+
+def main() -> None:
+    adapter = CsvAdapter(DATA_DIR)
+    strategies = [SmaDip(), TrendFilter()]
+    for symbol, inst in INSTRUMENTS.items():
+        bars = adapter.bars(symbol, limit=2000)
+        meta = adapter.meta(symbol)
+        for strat in strategies:
+            result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
+            card = build_scorecard(result, meta)
+            print(f"\n[{card['strategy']} on {card['instrument']}] {card['headline']}")
+            print(f"  {card['verdict']}")
+            print(f"  data={card['data_source']} ({card['evidence_grade']}, "
+                  f"adjustment={card['price_adjustment']})")
+            print(f"  trades={card['trades']} win_rate={card['win_rate']} "
+                  f"strat_return={card['strategy_return']} vs buy&hold={card['buy_and_hold_return']} "
+                  f"({card['vs_benchmark']})")
+
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.env
+paper_state.json
+paper_state.json.tmp
+*.incompatible.*.json

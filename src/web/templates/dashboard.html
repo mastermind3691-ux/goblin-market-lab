@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Goblin Market Lab</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background:#0b1410; color:#e6f5ec; margin:0; padding:24px; }
+    h1 { font-size:20px; }
+    .banner { padding:10px 14px; border-radius:8px; margin-bottom:18px; font-size:14px; }
+    .safe { background:#0f2a1a; border:1px solid #1f6b3c; }
+    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); }
+    .card { background:#0e1a12; border:1px solid #1f3d2a; border-radius:10px; padding:14px; }
+    .headline { font-weight:600; margin-bottom:6px; }
+    .muted { color:#8fa99a; font-size:13px; }
+    .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#13261a; border:1px solid #2c5a3c; margin-right:4px; }
+    .warn { background:#2a210f; border-color:#6b561f; color:#f0d68a; }
+    .flag { color:#f0a36a; font-size:13px; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Goblin Market Lab <span class="pill">paper-only</span></h1>
+  <div class="banner safe">{{ safety.verdict }} &middot; can_place_orders = {{ safety.can_place_orders }}</div>
+
+  <div class="grid">
+    {% for c in scorecards %}
+    <div class="card">
+      <div class="headline">{{ c.headline }}</div>
+      <div class="muted">{{ c.strategy }} on {{ c.instrument }}</div>
+      <div style="margin:6px 0">
+        {% if c.synthetic %}<span class="pill warn">synthetic — not evidence</span>{% else %}<span class="pill">{{ c.evidence_grade }}</span>{% endif %}
+        <span class="pill">adjustment: {{ c.price_adjustment }}</span>
+        <span class="pill">vs buy&amp;hold: {{ c.vs_benchmark }}</span>
+      </div>
+      <p>{{ c.verdict }}</p>
+      <div class="muted">
+        trades: {{ c.trades }} &middot; win rate: {{ c.win_rate }} &middot;
+        expectancy/trade: {{ c.expectancy_per_trade }}
+      </div>
+      <div class="muted">
+        strategy return: {{ c.strategy_return }} &middot; buy &amp; hold: {{ c.buy_and_hold_return }}
+      </div>
+      {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
+      <div class="muted" style="margin-top:6px">human approval required: {{ c.required_human_approval }} &middot;
+        pilot-ready: {{ c.ready_for_pilot }}</div>
+    </div>
+    {% else %}
+    <div class="card"><div class="headline">No data yet</div>
+      <div class="muted">Add CSVs to /data and refresh.</div></div>
+    {% endfor %}
+  </div>
+</body>
+</html>

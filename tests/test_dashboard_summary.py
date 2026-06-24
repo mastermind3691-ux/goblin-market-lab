@@ -106,6 +106,18 @@ class TestAdminRefresh(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401)
 
+    def test_refresh_refuses_when_dashboard_password_unset(self):
+        os.environ.pop("DASHBOARD_PASSWORD", None)
+        os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        headers = {"X-Goblin-Action": "refresh-market-data"}
+        with patch.object(web_app, "refresh_market_data") as refresh, \
+             patch.object(web_app, "run_forward_observation") as shadow:
+            response = self.client.post("/admin/refresh", headers=headers)
+
+        self.assertEqual(response.status_code, 401)
+        refresh.assert_not_called()
+        shadow.assert_not_called()
+
     def test_get_refresh_not_allowed(self):
         response = self.client.get("/admin/refresh", headers=_basic())
         self.assertEqual(response.status_code, 405)
@@ -159,8 +171,22 @@ class TestAdminRefresh(unittest.TestCase):
         self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
         self.assertTrue(payload["forward_observation_started"])
         self.assertEqual(payload["new_forward_records_last_run"], 0)
-        refresh.assert_called_once_with(["SPY", "GLD"], "2000-01-01", output_dir="/mnt/data/real")
+        refresh.assert_called_once_with(
+            ["SPY", "GLD"], "2000-01-01",
+            output_dir="/mnt/data/real", write_raw=False,
+        )
         shadow.assert_called_once_with()
+
+    def test_lock_releases_when_refresh_fails(self):
+        os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        headers = _basic()
+        headers["X-Goblin-Action"] = "refresh-market-data"
+        with patch.object(web_app, "refresh_market_data", side_effect=RuntimeError("boom")):
+            response = self.client.post("/admin/refresh", headers=headers)
+
+        self.assertEqual(response.status_code, 500)
+        self.assertTrue(web_app._refresh_lock.acquire(blocking=False))
+        web_app._refresh_lock.release()
 
     def test_double_refresh_returns_409(self):
         os.environ["REAL_DATA_DIR"] = "/mnt/data/real"

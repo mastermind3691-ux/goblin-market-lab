@@ -1,9 +1,11 @@
 import unittest
+import tempfile
 from unittest.mock import patch
 
 import pandas as pd
 
 from tools.download_market_data import dataframe_to_csv_text
+from tools.refresh_market_data import refresh_market_data
 
 
 def _mock_dataframe():
@@ -83,3 +85,17 @@ class TestCsvValidatorAcceptsOutput(unittest.TestCase):
         self.assertTrue(result.ok, f"Errors: {result.errors}")
         self.assertEqual(result.bar_count, 4)
         self.assertEqual(result.date_range, ("2023-01-02", "2023-01-05"))
+
+
+class TestRefreshMarketData(unittest.TestCase):
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_write_raw_false_skips_raw_copy(self, mock_fetch):
+        mock_fetch.return_value = _mock_dataframe()
+        with tempfile.TemporaryDirectory() as d:
+            result = refresh_market_data(
+                ["SPY"], "2023-01-01", "2023-01-06",
+                output_dir=d, write_raw=False,
+            )
+
+        self.assertEqual(result["symbols"], ["SPY"])
+        self.assertIsNone(result["refreshed"][0]["raw_path"])

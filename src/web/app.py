@@ -168,6 +168,7 @@ def create_app() -> Flask:
             refresh = refresh_market_data(
                 REFRESH_SYMBOLS, REFRESH_START,
                 output_dir=real_data_dir,
+                write_raw=False,
             )
             shadow = run_forward_observation()
             s = safety_state()
@@ -188,6 +189,12 @@ def create_app() -> Flask:
                 "forward_message": shadow["forward_message"],
                 "can_place_orders": s.can_place_orders,
             })
+        except Exception:
+            return jsonify({
+                "ok": False,
+                "error": "Refresh failed.",
+                "can_place_orders": safety_state().can_place_orders,
+            }), 500
         finally:
             _refresh_lock.release()
 

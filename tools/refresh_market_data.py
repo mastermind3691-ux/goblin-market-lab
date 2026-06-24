@@ -19,12 +19,14 @@ from tools.import_csv import import_csv_text, real_data_dir
 
 def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
                         adjustment: str = "unknown",
-                        output_dir: str | None = None) -> dict:
+                        output_dir: str | None = None,
+                        write_raw: bool = True) -> dict:
     end = end or date.today().isoformat()
     out_dir = output_dir or real_data_dir()
     root = os.path.join(os.path.dirname(__file__), "..")
     raw_dir = os.path.join(root, "data", "raw", "yfinance")
-    os.makedirs(raw_dir, exist_ok=True)
+    if write_raw:
+        os.makedirs(raw_dir, exist_ok=True)
 
     refreshed = []
     for symbol in symbols:
@@ -32,9 +34,11 @@ def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
         df = fetch_bars(symbol, start, end)
         csv_text = dataframe_to_csv_text(df)
 
-        raw_path = os.path.join(raw_dir, f"{symbol}.csv")
-        with open(raw_path, "w", encoding="utf-8") as fh:
-            fh.write(csv_text)
+        raw_path = None
+        if write_raw:
+            raw_path = os.path.join(raw_dir, f"{symbol}.csv")
+            with open(raw_path, "w", encoding="utf-8") as fh:
+                fh.write(csv_text)
 
         imported = import_csv_text(
             symbol, csv_text, source="yfinance",

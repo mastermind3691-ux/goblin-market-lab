@@ -99,6 +99,35 @@ initializes one and waits for the next completed bar. It does not place trades,
 create orders, run on a schedule, poll the dashboard, or mutate the paper
 portfolio.
 
+## Railway Cron refresh
+
+To avoid forgetting manual refreshes, create a separate Railway Cron service
+from the same repo if desired. Mount the same volume at `/mnt/data` and set:
+
+```bash
+REAL_DATA_DIR=/mnt/data/real
+SHADOW_STATE_PATH=/mnt/data/shadow_state.json
+FORCE_PAPER_ONLY=true
+```
+
+Use this command:
+
+```bash
+python -m tools.refresh_lab --symbols SPY GLD --start 2000-01-01
+```
+
+Suggested cron schedule:
+
+```text
+30 22 * * 1-5
+```
+
+Railway cron uses UTC. `22:30 UTC` is after the regular US market close during
+typical market hours. This command is a one-shot data/evidence refresh: it
+downloads SPY/GLD data into `REAL_DATA_DIR`, runs true forward observation, and
+exits when complete. It is not an in-app scheduler, daemon, polling loop, or
+trading process.
+
 ## Tests
 
 ```bash

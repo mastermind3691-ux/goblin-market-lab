@@ -102,7 +102,26 @@ portfolio.
 ## Railway Cron refresh
 
 To avoid forgetting manual refreshes, create a separate Railway Cron service
-from the same repo if desired. Mount the same volume at `/mnt/data` and set:
+from the same repo if desired. Railway volumes should not be treated as shared
+between services, so the recommended cron service does **not** mount a volume.
+Instead, it calls the dashboard service's protected refresh endpoint; the
+dashboard service owns `/mnt/data` and writes the market data + shadow state.
+
+Cron service command:
+
+```bash
+python -m tools.trigger_admin_refresh
+```
+
+Cron service env vars:
+
+```bash
+DASHBOARD_URL=https://goblin-market-lab-production.up.railway.app
+DASHBOARD_USERNAME=admin
+DASHBOARD_PASSWORD=<same dashboard password>
+```
+
+Dashboard service env vars and volume:
 
 ```bash
 REAL_DATA_DIR=/mnt/data/real
@@ -110,11 +129,8 @@ SHADOW_STATE_PATH=/mnt/data/shadow_state.json
 FORCE_PAPER_ONLY=true
 ```
 
-Use this command:
-
-```bash
-python -m tools.refresh_lab --symbols SPY GLD --start 2000-01-01
-```
+Mount the dashboard service volume at `/mnt/data`. No volume is needed on the
+cron service.
 
 Suggested cron schedule:
 
@@ -123,10 +139,17 @@ Suggested cron schedule:
 ```
 
 Railway cron uses UTC. `22:30 UTC` is after the regular US market close during
-typical market hours. This command is a one-shot data/evidence refresh: it
-downloads SPY/GLD data into `REAL_DATA_DIR`, runs true forward observation, and
-exits when complete. It is not an in-app scheduler, daemon, polling loop, or
+typical market hours. `tools.trigger_admin_refresh` is a one-shot HTTP trigger:
+it calls dashboard `POST /admin/refresh` with Basic Auth and exits when the
+request completes. It is not an in-app scheduler, daemon, polling loop, or
 trading process.
+
+For local/direct one-shot refreshes where the process has access to
+`REAL_DATA_DIR` and `SHADOW_STATE_PATH`, this command remains available:
+
+```bash
+python -m tools.refresh_lab --symbols SPY GLD --start 2000-01-01
+```
 
 ## Tests
 

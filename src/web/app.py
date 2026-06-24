@@ -214,5 +214,10 @@ def create_app() -> Flask:
 
 app = create_app()
 
-if __name__ == "__main__":
+
+def run_web() -> None:
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", "5060")))
+
+
+if __name__ == "__main__":
+    run_web()

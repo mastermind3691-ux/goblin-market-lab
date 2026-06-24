@@ -107,7 +107,29 @@ between services, so the recommended cron service does **not** mount a volume.
 Instead, it calls the dashboard service's protected refresh endpoint; the
 dashboard service owns `/mnt/data` and writes the market data + shadow state.
 
-Cron service command:
+Both Railway services use the same `railway.json` start command:
+
+```bash
+python -m tools.railway_entrypoint
+```
+
+The entrypoint chooses a hardcoded role from `GOBLIN_SERVICE_ROLE`.
+
+Dashboard service:
+
+- `GOBLIN_SERVICE_ROLE=web` (optional; `web` is the default)
+- mount the volume at `/mnt/data`
+- set `REAL_DATA_DIR=/mnt/data/real`
+- set `SHADOW_STATE_PATH=/mnt/data/shadow_state.json`
+- set `FORCE_PAPER_ONLY=true`
+
+Cron service:
+
+- `GOBLIN_SERVICE_ROLE=cron-trigger`
+- no volume
+- set `DASHBOARD_URL`, `DASHBOARD_USERNAME`, and `DASHBOARD_PASSWORD`
+
+The cron role runs the same one-shot trigger command internally:
 
 ```bash
 python -m tools.trigger_admin_refresh
@@ -120,17 +142,6 @@ DASHBOARD_URL=https://goblin-market-lab-production.up.railway.app
 DASHBOARD_USERNAME=admin
 DASHBOARD_PASSWORD=<same dashboard password>
 ```
-
-Dashboard service env vars and volume:
-
-```bash
-REAL_DATA_DIR=/mnt/data/real
-SHADOW_STATE_PATH=/mnt/data/shadow_state.json
-FORCE_PAPER_ONLY=true
-```
-
-Mount the dashboard service volume at `/mnt/data`. No volume is needed on the
-cron service.
 
 Suggested cron schedule:
 

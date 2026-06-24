@@ -69,6 +69,8 @@
     }
     .action:hover { border-color:#4a7f62; background:#14281f; }
     .action:focus-visible { outline:2px solid #68d391; outline-offset:2px; }
+    .action.primary { border-color:#4d8f67; background:#173322; color:#d7ffe3; }
+    .action:disabled { opacity:.55; cursor:not-allowed; }
     .pill {
       display:inline-flex;
       align-items:center;
@@ -126,6 +128,9 @@
     .shadow-box strong { display:block; font-size:22px; margin-top:2px; }
     .flag { color:var(--danger); font-size:13px; margin-top:8px; }
     .next { margin-top:12px; color:#d6e9de; font-size:14px; border-top:1px solid var(--line-soft); padding-top:12px; }
+    .action-status { min-height:20px; margin-top:8px; color:var(--muted); font-size:13px; }
+    .action-status.ok { color:var(--good); }
+    .action-status.error { color:var(--danger); }
     .score-text { color:#d6e4dc; font-size:14px; line-height:1.45; margin-top:8px; }
     @media (max-width: 760px) {
       body { padding:14px; }
@@ -155,7 +160,9 @@
           <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy Refresh Command</button>
           <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking">Copy Shadow Command</button>
           <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway Setup</button>
+          <button class="action primary" type="button" data-admin-refresh>Refresh Data + Shadow</button>
         </div>
+        <div class="action-status" data-admin-refresh-status></div>
         <div class="next">{{ summary.next_step }}</div>
       </div>
 
@@ -275,6 +282,31 @@
       });
       button.dataset.label = button.textContent;
     });
+    const refreshButton = document.querySelector("[data-admin-refresh]");
+    const refreshStatus = document.querySelector("[data-admin-refresh-status]");
+    if (refreshButton && refreshStatus) {
+      refreshButton.addEventListener("click", async () => {
+        if (!confirm("Refresh SPY/GLD data and shadow evidence? No trades will be placed.")) return;
+        refreshButton.disabled = true;
+        refreshStatus.className = "action-status";
+        refreshStatus.textContent = "Refreshing data and shadow evidence...";
+        try {
+          const response = await fetch("/admin/refresh", {
+            method: "POST",
+            headers: { "X-Goblin-Action": "refresh-market-data" },
+          });
+          const payload = await response.json();
+          if (!response.ok || !payload.ok) throw new Error(payload.error || "Refresh failed.");
+          refreshStatus.className = "action-status ok";
+          refreshStatus.textContent = `Refresh complete. Latest bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.`;
+        } catch (error) {
+          refreshStatus.className = "action-status error";
+          refreshStatus.textContent = error.message;
+        } finally {
+          refreshButton.disabled = false;
+        }
+      });
+    }
   </script>
 </body>
 </html>

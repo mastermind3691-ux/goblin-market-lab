@@ -22,14 +22,12 @@ from src.strategies.sma_dip import SmaDip
 from src.strategies.trend_filter import TrendFilter
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
-REAL_DIR = os.path.join(DATA_DIR, "real")
 SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
                          os.path.join(os.path.dirname(__file__), "..", "shadow_state.json"))
 
 
-def main() -> None:
-    real = REAL_DIR if os.path.isdir(REAL_DIR) else None
-    adapter = CsvAdapter(DATA_DIR, real_dir=real)
+def run_shadow_tracking() -> dict:
+    adapter = CsvAdapter(DATA_DIR)
     strategies = [SmaDip(), TrendFilter()]
 
     saved = load_json(SHADOW_PATH)
@@ -63,9 +61,18 @@ def main() -> None:
             print(f"  {symbol}: {resolved} outcomes resolved")
 
     atomic_write_json(SHADOW_PATH, tracker.to_dict())
-    print(f"\nPersisted to {SHADOW_PATH}")
 
-    s = tracker.summary()
+    summary = tracker.summary()
+    summary["path"] = SHADOW_PATH
+    summary["added"] = total_added
+    summary["resolved_now"] = total_resolved
+    return summary
+
+
+def main() -> None:
+    s = run_shadow_tracking()
+    print(f"\nPersisted to {s['path']}")
+
     print(f"\n--- Shadow Summary ---")
     print(f"  total records: {s['total']}")
     print(f"  historical bootstrap: {s['historical_bootstrap']}")

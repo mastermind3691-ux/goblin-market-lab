@@ -171,6 +171,35 @@ class TestAdapterRealFallback(unittest.TestCase):
         meta = adapter.meta("SYN")
         self.assertTrue(meta.synthetic)
 
+    def test_real_data_dir_env_preferred_over_repo_real_dir(self):
+        base = tempfile.mkdtemp()
+        repo_real = os.path.join(base, "real")
+        env_real = os.path.join(base, "env-real")
+        os.makedirs(repo_real)
+        os.makedirs(env_real)
+
+        with open(os.path.join(base, "SPY.csv"), "w") as f:
+            f.write("date,open,high,low,close,volume\n2024-01-01,1,1,1,1,1\n")
+        with open(os.path.join(repo_real, "SPY.csv"), "w") as f:
+            f.write("date,open,high,low,close,volume\n2024-01-02,2,2,2,2,2\n")
+        with open(os.path.join(env_real, "SPY.csv"), "w") as f:
+            f.write("date,open,high,low,close,volume\n2024-01-03,3,3,3,3,3\n")
+        with open(os.path.join(env_real, "SPY.meta.json"), "w") as f:
+            json.dump({"source": "env_real", "synthetic": False,
+                       "adjustment": "unknown"}, f)
+
+        old = os.environ.get("REAL_DATA_DIR")
+        os.environ["REAL_DATA_DIR"] = env_real
+        try:
+            adapter = CsvAdapter(base)
+            self.assertEqual(adapter.bars("SPY")[0]["ts"], "2024-01-03")
+            self.assertEqual(adapter.meta("SPY").source, "env_real")
+        finally:
+            if old is None:
+                os.environ.pop("REAL_DATA_DIR", None)
+            else:
+                os.environ["REAL_DATA_DIR"] = old
+
 
 class TestSyntheticLabelBehavior(unittest.TestCase):
     def test_synthetic_sidecar_marks_synthetic(self):

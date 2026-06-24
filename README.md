@@ -55,7 +55,11 @@ contains generated data, not source).
 To populate it on Railway:
 
 1. **Create a Railway volume** and mount it at `/mnt/data`.
-2. **Set the env var** `SHADOW_STATE_PATH=/mnt/data/shadow_state.json`.
+2. **Set the env vars**:
+   ```bash
+   REAL_DATA_DIR=/mnt/data/real
+   SHADOW_STATE_PATH=/mnt/data/shadow_state.json
+   ```
 3. **Run the one-time bootstrap** (Railway shell or one-off command):
    ```bash
    python -m tools.run_shadow_tracking
@@ -69,6 +73,24 @@ To populate it on Railway:
 **Safety:** `run_shadow_tracking` is record-only. No trades are placed, no
 paper portfolio is mutated, no order/broker/execution code exists in this repo.
 `can_place_orders()` remains `False`.
+
+## Dashboard manual refresh
+
+When `DASHBOARD_PASSWORD` is set and a Railway volume is mounted at `/mnt/data`,
+the dashboard can run a protected manual refresh from the "Refresh Data +
+Shadow" button. This calls `POST /admin/refresh` with a fixed action header,
+fixed symbols (`SPY`, `GLD`), and fixed start date (`2000-01-01`).
+
+The route requires:
+
+```bash
+REAL_DATA_DIR=/mnt/data/real
+SHADOW_STATE_PATH=/mnt/data/shadow_state.json
+```
+
+It refreshes market CSV/meta files into `REAL_DATA_DIR`, then updates the shadow
+ledger. It does not place trades, create orders, run on a schedule, poll the
+dashboard, or mutate the paper portfolio.
 
 ## Tests
 

@@ -14,10 +14,11 @@ it become a second dashboard.py.
 from __future__ import annotations
 
 import os
+import threading
 
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, request
 
-from .auth import require_auth
+from .auth import auth_enabled, require_auth
 from ..backtest.engine import backtest
 from ..data.csv_adapter import CsvAdapter
 from ..instruments.registry import INSTRUMENTS
@@ -25,11 +26,16 @@ from ..paper.persistence import load_json
 from ..paper.shadow_tracker import ShadowTracker
 from ..safety.gate import safety_state
 from ..scorecard.scorecard import build_scorecard
+from tools.refresh_market_data import refresh_market_data
+from tools.run_shadow_tracking import run_shadow_tracking
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
-REAL_DIR = os.path.join(DATA_DIR, "real")
 SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
                          os.path.join(os.path.dirname(__file__), "..", "..", "shadow_state.json"))
+REFRESH_ACTION_HEADER = "refresh-market-data"
+REFRESH_SYMBOLS = ["SPY", "GLD"]
+REFRESH_START = "2000-01-01"
+_refresh_lock = threading.Lock()
 
 
 def _strategies():
@@ -40,8 +46,7 @@ def _strategies():
 
 
 def compute_scorecards() -> list[dict]:
-    real = REAL_DIR if os.path.isdir(REAL_DIR) else None
-    adapter = CsvAdapter(DATA_DIR, real_dir=real)
+    adapter = CsvAdapter(DATA_DIR)
     cards: list[dict] = []
     for symbol, inst in INSTRUMENTS.items():
         try:
@@ -126,6 +131,52 @@ def create_app() -> Flask:
             "shadow_summary": shadow,
             "dashboard_summary": dashboard_summary(scorecards, shadow),
         })
+
+    @app.post("/admin/refresh")
+    @require_auth
+    def admin_refresh():
+        if not auth_enabled():
+            return jsonify({
+                "ok": False,
+                "error": "DASHBOARD_PASSWORD is required before admin refresh can run.",
+            }), 401
+        if request.headers.get("X-Goblin-Action") != REFRESH_ACTION_HEADER:
+            return jsonify({
+                "ok": False,
+                "error": "Missing or invalid X-Goblin-Action header.",
+            }), 403
+        real_data_dir = (os.getenv("REAL_DATA_DIR") or "").strip()
+        if not real_data_dir:
+            return jsonify({
+                "ok": False,
+                "error": "REAL_DATA_DIR is required for dashboard refresh.",
+                "setup": "Set REAL_DATA_DIR=/mnt/data/real and mount a Railway volume at /mnt/data.",
+            }), 400
+        if not _refresh_lock.acquire(blocking=False):
+            return jsonify({
+                "ok": False,
+                "error": "Refresh is already running.",
+            }), 409
+
+        try:
+            refresh = refresh_market_data(
+                REFRESH_SYMBOLS, REFRESH_START,
+                output_dir=real_data_dir,
+            )
+            shadow = run_shadow_tracking()
+            s = safety_state()
+            return jsonify({
+                "ok": True,
+                "symbols_refreshed": refresh["symbols"],
+                "output_dir": refresh["output_dir"],
+                "latest_bar_date": refresh["latest_bar_date"],
+                "shadow_total": shadow["total"],
+                "historical_bootstrap": shadow["historical_bootstrap"],
+                "forward_observed": shadow["forward_observed"],
+                "can_place_orders": s.can_place_orders,
+            })
+        finally:
+            _refresh_lock.release()
 
     @app.get("/")
     @require_auth

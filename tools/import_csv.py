@@ -1,11 +1,11 @@
-"""CLI: validate and import a real CSV file into data/real/.
+"""CLI: validate and import a real CSV file into the real-data directory.
 
     python -m tools.import_csv --symbol SPY --input path/to/SPY.csv \
         --source manual --adjustment adjusted
 
 Validates the CSV, normalizes columns, and writes the clean file plus a
-meta.json sidecar into data/real/. Never places orders, never touches
-the portfolio.
+meta.json sidecar into REAL_DATA_DIR when set, otherwise data/real/. Never
+places orders, never touches the portfolio.
 """
 
 from __future__ import annotations
@@ -20,6 +20,48 @@ from src.data.base import ADJUSTMENT_VALUES
 from src.data.csv_validator import validate_csv
 
 REAL_DIR = os.path.join(os.path.dirname(__file__), "..", "data", "real")
+
+
+def real_data_dir() -> str:
+    return (os.getenv("REAL_DATA_DIR") or REAL_DIR).strip()
+
+
+def import_csv_text(symbol: str, text: str, source: str, adjustment: str,
+                    output_dir: str | None = None) -> dict:
+    result = validate_csv(text)
+
+    if not result.ok:
+        raise ValueError("; ".join(result.errors))
+
+    out_dir = output_dir or real_data_dir()
+    os.makedirs(out_dir, exist_ok=True)
+
+    symbol = symbol.upper()
+    out_csv = os.path.join(out_dir, f"{symbol}.csv")
+    out_meta = os.path.join(out_dir, f"{symbol}.meta.json")
+
+    with open(out_csv, "w", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=["date", "open", "high", "low", "close", "volume"])
+        writer.writeheader()
+        writer.writerows(result.rows)
+
+    meta = {
+        "source": source,
+        "synthetic": False,
+        "adjustment": adjustment,
+    }
+    with open(out_meta, "w", encoding="utf-8") as fh:
+        json.dump(meta, fh, indent=2)
+
+    return {
+        "symbol": symbol,
+        "bar_count": result.bar_count,
+        "date_range": result.date_range,
+        "latest_bar_date": result.date_range[1],
+        "csv_path": out_csv,
+        "meta_path": out_meta,
+        "warnings": result.warnings,
+    }
 
 
 def main() -> None:
@@ -55,28 +97,11 @@ def main() -> None:
             print(f"  {e}")
         sys.exit(1)
 
-    os.makedirs(REAL_DIR, exist_ok=True)
+    imported = import_csv_text(args.symbol, text, args.source, args.adjustment)
 
-    symbol = args.symbol.upper()
-    out_csv = os.path.join(REAL_DIR, f"{symbol}.csv")
-    out_meta = os.path.join(REAL_DIR, f"{symbol}.meta.json")
-
-    with open(out_csv, "w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=["date", "open", "high", "low", "close", "volume"])
-        writer.writeheader()
-        writer.writerows(result.rows)
-
-    meta = {
-        "source": args.source,
-        "synthetic": False,
-        "adjustment": args.adjustment,
-    }
-    with open(out_meta, "w", encoding="utf-8") as fh:
-        json.dump(meta, fh, indent=2)
-
-    print(f"OK: {result.bar_count} bars written to {out_csv}")
-    print(f"    date range: {result.date_range[0]} to {result.date_range[1]}")
-    print(f"    meta: {out_meta} (source={args.source}, adjustment={args.adjustment})")
+    print(f"OK: {imported['bar_count']} bars written to {imported['csv_path']}")
+    print(f"    date range: {imported['date_range'][0]} to {imported['date_range'][1]}")
+    print(f"    meta: {imported['meta_path']} (source={args.source}, adjustment={args.adjustment})")
 
 
 if __name__ == "__main__":

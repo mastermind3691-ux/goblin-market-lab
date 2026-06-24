@@ -1,7 +1,17 @@
 import os
 import unittest
+import base64
+from unittest.mock import patch
 
+import src.web.app as web_app
 from src.web.app import app, dashboard_summary
+
+PASSWORD = "refresh-test-password"
+
+
+def _basic(user: str = "admin", password: str = PASSWORD) -> dict:
+    token = base64.b64encode(f"{user}:{password}".encode()).decode()
+    return {"Authorization": f"Basic {token}"}
 
 
 class TestDashboardSummary(unittest.TestCase):
@@ -61,11 +71,90 @@ class TestDashboardStatusApi(unittest.TestCase):
         body = self.client.get("/").get_data(as_text=True)
 
         self.assertIn("data-safe-actions", body)
+        self.assertIn("data-admin-refresh", body)
         self.assertIn('href="/api/status"', body)
         self.assertIn('href="/health"', body)
         self.assertEqual(body.count("data-copy="), 3)
         self.assertNotIn("<form", body.lower())
         self.assertNotIn("method=\"post\"", body.lower())
+
+
+class TestAdminRefresh(unittest.TestCase):
+    def setUp(self):
+        os.environ["DASHBOARD_PASSWORD"] = PASSWORD
+        os.environ.pop("REAL_DATA_DIR", None)
+        self.client = app.test_client()
+
+    def tearDown(self):
+        os.environ.pop("DASHBOARD_PASSWORD", None)
+        os.environ.pop("DASHBOARD_USERNAME", None)
+        os.environ.pop("REAL_DATA_DIR", None)
+
+    def test_refresh_requires_auth(self):
+        response = self.client.post(
+            "/admin/refresh",
+            headers={"X-Goblin-Action": "refresh-market-data"},
+        )
+        self.assertEqual(response.status_code, 401)
+
+    def test_get_refresh_not_allowed(self):
+        response = self.client.get("/admin/refresh", headers=_basic())
+        self.assertEqual(response.status_code, 405)
+
+    def test_missing_or_wrong_action_header_returns_403(self):
+        os.environ["REAL_DATA_DIR"] = "/tmp/not-used"
+        self.assertEqual(self.client.post("/admin/refresh", headers=_basic()).status_code, 403)
+        headers = _basic()
+        headers["X-Goblin-Action"] = "wrong"
+        self.assertEqual(self.client.post("/admin/refresh", headers=headers).status_code, 403)
+
+    def test_missing_real_data_dir_returns_400_before_refresh(self):
+        headers = _basic()
+        headers["X-Goblin-Action"] = "refresh-market-data"
+        with patch.object(web_app, "refresh_market_data") as refresh:
+            response = self.client.post("/admin/refresh", headers=headers)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("REAL_DATA_DIR", response.get_json()["setup"])
+        refresh.assert_not_called()
+
+    def test_successful_refresh_uses_fixed_inputs_and_reports_safety(self):
+        os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        headers = _basic()
+        headers["X-Goblin-Action"] = "refresh-market-data"
+        with patch.object(web_app, "refresh_market_data") as refresh, \
+             patch.object(web_app, "run_shadow_tracking") as shadow:
+            refresh.return_value = {
+                "symbols": ["SPY", "GLD"],
+                "output_dir": "/mnt/data/real",
+                "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+            }
+            shadow.return_value = {
+                "total": 429,
+                "historical_bootstrap": 429,
+                "forward_observed": 0,
+            }
+            response = self.client.post("/admin/refresh", headers=headers)
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload["ok"])
+        self.assertFalse(payload["can_place_orders"])
+        self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
+        refresh.assert_called_once_with(["SPY", "GLD"], "2000-01-01", output_dir="/mnt/data/real")
+        shadow.assert_called_once_with()
+
+    def test_double_refresh_returns_409(self):
+        os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        headers = _basic()
+        headers["X-Goblin-Action"] = "refresh-market-data"
+        self.assertTrue(web_app._refresh_lock.acquire(blocking=False))
+        try:
+            response = self.client.post("/admin/refresh", headers=headers)
+        finally:
+            web_app._refresh_lock.release()
+
+        self.assertEqual(response.status_code, 409)
 
 
 if __name__ == "__main__":

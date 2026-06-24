@@ -5,79 +5,276 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Goblin Market Lab</title>
   <style>
-    body { font-family: system-ui, sans-serif; background:#0b1410; color:#e6f5ec; margin:0; padding:24px; }
-    h1 { font-size:20px; }
-    .banner { padding:10px 14px; border-radius:8px; margin-bottom:18px; font-size:14px; }
-    .safe { background:#0f2a1a; border:1px solid #1f6b3c; }
-    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); }
-    .card { background:#0e1a12; border:1px solid #1f3d2a; border-radius:10px; padding:14px; }
-    .headline { font-weight:600; margin-bottom:6px; }
-    .muted { color:#8fa99a; font-size:13px; }
-    .pill { display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; background:#13261a; border:1px solid #2c5a3c; margin-right:4px; }
-    .warn { background:#2a210f; border-color:#6b561f; color:#f0d68a; }
-    .flag { color:#f0a36a; font-size:13px; margin-top:6px; }
+    :root {
+      color-scheme: dark;
+      --bg:#08110d;
+      --panel:#0d1913;
+      --panel-soft:#101f17;
+      --line:#224232;
+      --line-soft:#183124;
+      --text:#edf7f1;
+      --muted:#9fb5a8;
+      --good:#68d391;
+      --warn:#e7c36a;
+      --warn-bg:#2b2312;
+      --danger:#f29b7f;
+    }
+    * { box-sizing:border-box; }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(38, 88, 62, .24), transparent 34rem),
+        linear-gradient(180deg, #0a1510 0%, var(--bg) 70%);
+      color:var(--text);
+      margin:0;
+      padding:24px;
+    }
+    .shell { max-width:1180px; margin:0 auto; }
+    .hero {
+      display:grid;
+      grid-template-columns:minmax(0, 1.4fr) minmax(260px, .8fr);
+      gap:16px;
+      align-items:stretch;
+      margin-bottom:16px;
+    }
+    .panel, .card {
+      background:rgba(13, 25, 19, .92);
+      border:1px solid var(--line-soft);
+      border-radius:8px;
+      box-shadow:0 18px 50px rgba(0, 0, 0, .22);
+    }
+    .panel { padding:18px; }
+    .eyebrow { color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
+    h1 { font-size:26px; line-height:1.1; margin:6px 0 8px; letter-spacing:0; }
+    h2 { font-size:15px; margin:0 0 10px; letter-spacing:0; }
+    p { margin:0; }
+    .lead { color:#cfe0d6; font-size:15px; max-width:68ch; }
+    .hero-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .action-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .action {
+      appearance:none;
+      display:inline-flex;
+      align-items:center;
+      min-height:30px;
+      padding:5px 10px;
+      border-radius:8px;
+      border:1px solid #315844;
+      background:#102119;
+      color:#e4f2ea;
+      font:inherit;
+      font-size:12px;
+      font-weight:700;
+      text-decoration:none;
+      cursor:pointer;
+    }
+    .action:hover { border-color:#4a7f62; background:#14281f; }
+    .action:focus-visible { outline:2px solid #68d391; outline-offset:2px; }
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      min-height:24px;
+      padding:3px 9px;
+      border-radius:999px;
+      border:1px solid #2c5a3c;
+      background:#13261a;
+      color:#dbece3;
+      font-size:12px;
+      font-weight:650;
+      white-space:nowrap;
+    }
+    .pill.safe { border-color:#2f7b4a; color:#bdf3ce; }
+    .pill.warn { background:var(--warn-bg); border-color:#725b22; color:#f2d88f; }
+    .pill.danger { background:#2a1714; border-color:#7a3c2d; color:#ffc0ae; }
+    .pill.muted { color:#b8ccbf; border-color:#2b4436; background:#102018; }
+    .metric-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
+    .metric {
+      padding:11px;
+      border:1px solid var(--line-soft);
+      border-radius:8px;
+      background:var(--panel-soft);
+    }
+    .metric .label { color:var(--muted); font-size:12px; margin-bottom:4px; }
+    .metric .value { font-size:18px; font-weight:750; }
+    .section { margin-top:16px; }
+    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
+    .card { padding:14px; }
+    .headline { font-weight:760; margin-bottom:6px; }
+    .subhead { color:#cbded3; font-size:13px; margin-bottom:10px; }
+    .muted { color:var(--muted); font-size:13px; }
+    .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+    .keyline {
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0, 1fr));
+      gap:8px;
+      margin-top:10px;
+    }
+    .keyline div {
+      border-top:1px solid var(--line-soft);
+      padding-top:8px;
+      min-width:0;
+    }
+    .keyline span { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:700; }
+    .keyline strong { display:block; margin-top:2px; font-size:14px; overflow-wrap:anywhere; }
+    .shadow-split { display:grid; gap:10px; grid-template-columns:repeat(2, minmax(0, 1fr)); margin-top:10px; }
+    .shadow-box {
+      border:1px solid var(--line-soft);
+      border-radius:8px;
+      padding:12px;
+      background:var(--panel-soft);
+    }
+    .shadow-box strong { display:block; font-size:22px; margin-top:2px; }
+    .flag { color:var(--danger); font-size:13px; margin-top:8px; }
+    .next { margin-top:12px; color:#d6e9de; font-size:14px; border-top:1px solid var(--line-soft); padding-top:12px; }
+    .score-text { color:#d6e4dc; font-size:14px; line-height:1.45; margin-top:8px; }
+    @media (max-width: 760px) {
+      body { padding:14px; }
+      .hero { grid-template-columns:1fr; }
+      h1 { font-size:23px; }
+      .metric-grid, .keyline, .shadow-split { grid-template-columns:1fr; }
+      .pill { white-space:normal; }
+    }
   </style>
 </head>
 <body>
-  <h1>🧪 Goblin Market Lab <span class="pill">paper-only</span></h1>
-  <div class="banner safe">{{ safety.verdict }} &middot; can_place_orders = {{ safety.can_place_orders }}</div>
+  <main class="shell">
+    <section class="hero">
+      <div class="panel">
+        <div class="eyebrow">Market research cockpit</div>
+        <h1>Goblin Market Lab</h1>
+        <p class="lead">{{ summary.outcome.headline }}. {{ summary.outcome.measurement }}.</p>
+        <div class="hero-row">
+          <span class="pill safe">paper-only</span>
+          <span class="pill safe">can_place_orders = {{ safety.can_place_orders|string|lower }}</span>
+          <span class="pill muted">{{ summary.outcome.historical }}</span>
+          <span class="pill warn">{{ summary.outcome.forward }}</span>
+        </div>
+        <div class="action-row" data-safe-actions>
+          <a class="action" href="/api/status">View API Status</a>
+          <a class="action" href="/health">Health Check</a>
+          <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy Refresh Command</button>
+          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking">Copy Shadow Command</button>
+          <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway Setup</button>
+        </div>
+        <div class="next">{{ summary.next_step }}</div>
+      </div>
 
-  <div class="grid">
-    {% for c in scorecards %}
-    <div class="card">
-      <div class="headline">{{ c.headline }}</div>
-      <div class="muted">{{ c.strategy }} on {{ c.instrument }}</div>
-      <div style="margin:6px 0">
-        {% if c.synthetic %}<span class="pill warn">synthetic — not evidence</span>{% else %}<span class="pill">{{ c.evidence_grade }}</span>{% endif %}
-        <span class="pill">adjustment: {{ c.price_adjustment }}</span>
-        <span class="pill">vs buy&amp;hold: {{ c.vs_benchmark }}</span>
+      <div class="panel">
+        <div class="eyebrow">Safety status</div>
+        <div class="chip-row">
+          {% for item in summary.safety %}
+            <span class="pill safe">{{ item }}</span>
+          {% endfor %}
+        </div>
+        <p class="muted" style="margin-top:8px">{{ safety.verdict }}</p>
       </div>
-      <p>{{ c.verdict }}</p>
-      <div class="muted">
-        trades: {{ c.trades }} &middot; win rate: {{ c.win_rate }} &middot;
-        expectancy/trade: {{ c.expectancy_per_trade }}
-      </div>
-      <div class="muted">
-        strategy return: {{ c.strategy_return }} &middot; buy &amp; hold: {{ c.buy_and_hold_return }}
-      </div>
-      <div class="muted">
-        source: {{ c.data_source }} &middot; bars tested: {{ c.bars_tested }} of {{ c.available_bars }} available{% if c.date_range_tested %} &middot; tested window: {{ c.date_range_tested[0] }} to {{ c.date_range_tested[1] }}{% endif %}
-      </div>
-      <div class="muted">
-        exposure: {{ (c.exposure_pct * 100)|round(1) }}% time in market &middot; last bar: {{ c.last_bar_date or "unknown" }}{% if c.data_is_stale %} <span class="pill warn">stale data</span>{% endif %}
-      </div>
-      {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
-      <div class="muted" style="margin-top:6px">human approval required: {{ c.required_human_approval }} &middot;
-        pilot-ready: {{ c.ready_for_pilot }}</div>
-    </div>
-    {% else %}
-    <div class="card"><div class="headline">No data yet</div>
-      <div class="muted">Add CSVs to /data and refresh.</div></div>
-    {% endfor %}
-  </div>
+    </section>
 
-  <div style="margin-top:18px">
-    <div class="card">
-      <div class="headline">Shadow Replay / Forward Evidence</div>
-      <div class="muted">{{ shadow.verdict }}</div>
-      <div class="muted" style="margin-top:6px">
-        total: {{ shadow.total }} &middot;
-        historical bootstrap: {{ shadow.historical_bootstrap }} &middot;
-        forward observed: {{ shadow.forward_observed }}
+    <section class="section">
+      <h2>Watching</h2>
+      <div class="grid">
+        {% for item in summary.instruments %}
+        <div class="card">
+          <div class="headline">{{ item.symbol }} - {{ item.label }}</div>
+          <div class="chip-row">
+            <span class="pill">source: {{ item.source }} CSV</span>
+            <span class="pill {% if item.adjustment == 'unknown' %}warn{% endif %}">adjustment: {{ item.adjustment }}</span>
+            {% if item.data_is_stale %}
+              <span class="pill warn">stale data</span>
+            {% else %}
+              <span class="pill safe">fresh data</span>
+            {% endif %}
+          </div>
+          <div class="keyline">
+            <div><span>Latest bar</span><strong>{{ item.latest_bar or "unknown" }}</strong></div>
+            <div><span>Bars</span><strong>{{ item.bars_tested }} tested / {{ item.available_bars }} available</strong></div>
+          </div>
+        </div>
+        {% endfor %}
       </div>
-      <div class="muted" style="margin-top:4px">
-        resolved: {{ shadow.resolved }} &middot; pending: {{ shadow.pending }}
-        {% if shadow.hit_rate_5bar is not none %} &middot; hit rate (5-bar): {{ (shadow.hit_rate_5bar * 100)|round(1) }}%{% endif %}
-        {% if shadow.avg_return_5bar is not none %} &middot; avg return (5-bar): {{ (shadow.avg_return_5bar * 100)|round(2) }}%{% endif %}
-        {% if shadow.avg_return_20bar is not none %} &middot; avg return (20-bar): {{ (shadow.avg_return_20bar * 100)|round(2) }}%{% endif %}
+    </section>
+
+    <section class="section">
+      <h2>Outcome</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="headline">No proven edge yet</div>
+          <p class="score-text">Strategies are being measured, not trusted. Scorecards compare each rule with buy-and-hold and keep human approval required.</p>
+        </div>
+        <div class="card">
+          <div class="headline">Shadow evidence</div>
+          <div class="shadow-split">
+            <div class="shadow-box">
+              <div class="muted">Historical bootstrap</div>
+              <strong>{{ shadow.historical_bootstrap }}</strong>
+              <div class="muted">sample size: {{ shadow.historical_sample_size }}</div>
+            </div>
+            <div class="shadow-box">
+              <div class="muted">Forward observed</div>
+              <strong>{{ shadow.forward_observed }}</strong>
+              <div class="muted">sample size: {{ shadow.forward_sample_size }}</div>
+            </div>
+          </div>
+          <div class="chip-row">
+            <span class="pill muted">resolved: {{ shadow.resolved }}</span>
+            <span class="pill muted">pending: {{ shadow.pending }}</span>
+            <span class="pill {% if shadow.enough_data %}safe{% else %}warn{% endif %}">enough forward data: {{ shadow.enough_data|string|lower }}</span>
+          </div>
+          <p class="muted">{{ shadow.verdict }}</p>
+        </div>
       </div>
-      <div class="muted" style="margin-top:4px">
-        historical sample size: {{ shadow.historical_sample_size }} &middot;
-        forward sample size: {{ shadow.forward_sample_size }} &middot;
-        enough forward data: {{ shadow.enough_data }}
+    </section>
+
+    <section class="section">
+      <h2>Scorecards</h2>
+      <div class="grid">
+        {% for c in scorecards %}
+        <article class="card">
+          <div class="headline">{{ c.instrument }} / {{ c.strategy }}</div>
+          <div class="subhead">{{ c.headline }}</div>
+          <div class="chip-row">
+            {% if c.synthetic %}
+              <span class="pill warn">synthetic - not evidence</span>
+            {% else %}
+              <span class="pill">source: {{ c.data_source }}</span>
+            {% endif %}
+            <span class="pill {% if c.price_adjustment == 'unknown' %}warn{% endif %}">adjustment: {{ c.price_adjustment }}</span>
+            <span class="pill {% if c.vs_benchmark == 'beats' %}safe{% elif c.vs_benchmark == 'lags' %}warn{% endif %}">vs benchmark: {{ c.vs_benchmark }}</span>
+            {% if c.data_is_stale %}<span class="pill warn">stale data</span>{% endif %}
+          </div>
+          <div class="keyline">
+            <div><span>Exposure</span><strong>{{ (c.exposure_pct * 100)|round(1) }}%</strong></div>
+            <div><span>Bars tested</span><strong>{{ c.bars_tested }} / {{ c.available_bars }}</strong></div>
+            <div><span>Latest bar</span><strong>{{ c.last_bar_date or "unknown" }}</strong></div>
+            <div><span>Benchmark</span><strong>{{ c.strategy_return }} vs {{ c.buy_and_hold_return }}</strong></div>
+          </div>
+          <p class="score-text">{{ c.verdict }}</p>
+          <div class="chip-row">
+            <span class="pill muted">trades: {{ c.trades }}</span>
+            <span class="pill muted">win rate: {{ c.win_rate }}</span>
+            <span class="pill muted">expectancy/trade: {{ c.expectancy_per_trade }}</span>
+          </div>
+          {% if c.concentration.flagged %}<div class="flag">{{ c.concentration.note }}</div>{% endif %}
+          <p class="muted" style="margin-top:8px">human approval required: {{ c.required_human_approval }}; pilot-ready: {{ c.ready_for_pilot }}</p>
+        </article>
+        {% else %}
+        <div class="card">
+          <div class="headline">No data yet</div>
+          <p class="muted">Add CSVs to data and refresh.</p>
+        </div>
+        {% endfor %}
       </div>
-      <div class="muted" style="margin-top:4px">No trades placed. No paper portfolio impact.</div>
-    </div>
-  </div>
+    </section>
+  </main>
+  <script>
+    document.querySelectorAll("[data-copy]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        await navigator.clipboard.writeText(button.dataset.copy);
+        button.textContent = "Copied";
+        setTimeout(() => { button.textContent = button.dataset.label || button.getAttribute("aria-label") || "Copy"; }, 1200);
+      });
+      button.dataset.label = button.textContent;
+    });
+  </script>
 </body>
 </html>

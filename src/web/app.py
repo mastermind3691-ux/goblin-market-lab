@@ -64,6 +64,45 @@ def shadow_summary() -> dict:
     return ShadowTracker.from_dict(saved).summary()
 
 
+def dashboard_summary(scorecards: list[dict], shadow: dict) -> dict:
+    instruments = []
+    for symbol, inst in INSTRUMENTS.items():
+        cards = [c for c in scorecards if c["instrument"] == symbol]
+        first = cards[0] if cards else {}
+        instruments.append({
+            "symbol": symbol,
+            "label": inst.label,
+            "source": first.get("data_source", "unknown"),
+            "latest_bar": first.get("last_bar_date"),
+            "adjustment": first.get("price_adjustment", "unknown"),
+            "data_is_stale": first.get("data_is_stale", True),
+            "bars_tested": max((c.get("bars_tested", 0) for c in cards), default=0),
+            "available_bars": first.get("available_bars", 0),
+        })
+
+    if shadow.get("forward_observed", 0) == 0:
+        next_step = "Next: run manual refreshes over time to begin forward observation."
+    else:
+        next_step = "Next: keep collecting forward evidence before considering paper portfolio simulation."
+
+    return {
+        "instruments": instruments,
+        "outcome": {
+            "headline": "No proven edge yet",
+            "measurement": "Strategies are being measured, not trusted",
+            "historical": "Historical shadow replay exists" if shadow.get("historical_bootstrap", 0) else "Historical shadow replay not started",
+            "forward": "Forward evidence has not started" if shadow.get("forward_observed", 0) == 0 else "Forward evidence is collecting",
+        },
+        "safety": [
+            "No real trades",
+            "No paper portfolio trades yet",
+            "No broker/order/execution code",
+            "can_place_orders = false",
+        ],
+        "next_step": next_step,
+    }
+
+
 def create_app() -> Flask:
     app = Flask(__name__, template_folder="templates")
 
@@ -75,23 +114,29 @@ def create_app() -> Flask:
     @require_auth
     def api_status():
         s = safety_state()
+        scorecards = compute_scorecards()
+        shadow = shadow_summary()
         return jsonify({
             "safety": {
                 "force_paper_only": s.force_paper_only,
                 "can_place_orders": s.can_place_orders,
                 "verdict": s.verdict,
             },
-            "scorecards": compute_scorecards(),
-            "shadow_summary": shadow_summary(),
+            "scorecards": scorecards,
+            "shadow_summary": shadow,
+            "dashboard_summary": dashboard_summary(scorecards, shadow),
         })
 
     @app.get("/")
     @require_auth
     def index():
+        scorecards = compute_scorecards()
+        shadow = shadow_summary()
         return render_template("dashboard.html",
                                safety=safety_state(),
-                               scorecards=compute_scorecards(),
-                               shadow=shadow_summary())
+                               scorecards=scorecards,
+                               shadow=shadow,
+                               summary=dashboard_summary(scorecards, shadow))
 
     return app
 

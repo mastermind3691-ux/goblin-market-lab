@@ -9,6 +9,7 @@ from src.paper.shadow_tracker import (
     ORIGIN_HISTORICAL, ORIGIN_FORWARD,
 )
 from src.safety.gate import can_place_orders, candidate_status
+from src.strategies.base import Signal, Strategy
 from src.strategies.sma_dip import SmaDip
 from src.strategies.trend_filter import TrendFilter
 
@@ -17,6 +18,20 @@ def _bars(prices, start_day=1):
     return [{"ts": f"2024-01-{start_day + i:02d}", "open": p, "high": p + 1,
              "low": p - 1, "close": p, "volume": 1000}
             for i, p in enumerate(prices)]
+
+
+class DateBuyStrategy(Strategy):
+    name = "date_buy"
+
+    def __init__(self, buy_dates):
+        self.buy_dates = set(buy_dates)
+
+    def signal(self, bars, position_open):
+        if position_open:
+            return Signal.SELL
+        if bars[-1]["ts"] in self.buy_dates:
+            return Signal.BUY
+        return Signal.HOLD
 
 
 class TestObserveNoLookAhead(unittest.TestCase):
@@ -134,6 +149,84 @@ class TestOriginLabel(unittest.TestCase):
         self.assertEqual(tracker.records[0].origin, ORIGIN_HISTORICAL)
 
 
+class TestForwardObservationMode(unittest.TestCase):
+    def test_first_forward_run_initializes_without_records(self):
+        tracker = ShadowTracker()
+        bars = _bars([100, 101, 102])
+
+        tracker.initialize_forward_observation({"SPY": bars[-1]["ts"]})
+
+        self.assertTrue(tracker.forward_observation_started)
+        self.assertEqual(tracker.forward_started_after["SPY"], "2024-01-03")
+        self.assertEqual(tracker.forward_observed_through["SPY"], "2024-01-03")
+        self.assertEqual(tracker.summary()["forward_observed"], 0)
+        self.assertFalse(tracker.summary()["enough_forward_data"])
+
+    def test_second_forward_run_with_no_newer_bars_creates_no_duplicates(self):
+        tracker = ShadowTracker()
+        bars = _bars([100, 101, 102])
+        tracker.initialize_forward_observation({"SPY": bars[-1]["ts"]})
+
+        added = tracker.observe_forward_bars(
+            DateBuyStrategy(["2024-01-03"]), "SPY", bars,
+            tracker.forward_observed_through["SPY"], warmup=0,
+        )
+
+        self.assertEqual(added, 0)
+        self.assertEqual(len(tracker.records), 0)
+
+    def test_forward_run_records_only_new_bar_signal(self):
+        tracker = ShadowTracker()
+        bars = _bars([100, 101, 102])
+        tracker.initialize_forward_observation({"SPY": bars[-1]["ts"]})
+        newer = _bars([100, 101, 102, 90])
+
+        added = tracker.observe_forward_bars(
+            DateBuyStrategy(["2024-01-02", "2024-01-04"]), "SPY", newer,
+            tracker.forward_observed_through["SPY"], warmup=0,
+        )
+        tracker.forward_observed_through["SPY"] = newer[-1]["ts"]
+
+        self.assertEqual(added, 1)
+        self.assertEqual(tracker.records[0].signal_date, "2024-01-04")
+        self.assertEqual(tracker.records[0].origin, ORIGIN_FORWARD)
+
+    def test_historical_records_remain_historical_after_forward_run(self):
+        tracker = ShadowTracker()
+        tracker.observe("date_buy", "SPY", "2024-01-02", "BUY", 101,
+                        origin=ORIGIN_HISTORICAL)
+        tracker.initialize_forward_observation({"SPY": "2024-01-03"})
+        bars = _bars([100, 101, 102, 90])
+
+        tracker.observe_forward_bars(
+            DateBuyStrategy(["2024-01-02", "2024-01-04"]), "SPY", bars,
+            "2024-01-03", warmup=0,
+        )
+
+        self.assertEqual(tracker.records[0].origin, ORIGIN_HISTORICAL)
+        self.assertEqual(tracker.summary()["historical_bootstrap"], 1)
+        self.assertEqual(tracker.summary()["forward_observed"], 1)
+
+    def test_forward_outcomes_pending_until_future_bars_exist(self):
+        tracker = ShadowTracker()
+        tracker.observe("s", "SPY", "2024-01-03", "BUY", 100,
+                        origin=ORIGIN_FORWARD)
+        tracker.resolve_outcomes("SPY", _bars([100, 100, 100, 100]))
+
+        self.assertEqual(tracker.summary()["forward_sample_size"], 0)
+        self.assertFalse(tracker.records[0].is_fully_resolved())
+
+    def test_forward_outcomes_resolve_after_enough_future_bars(self):
+        tracker = ShadowTracker()
+        bars = _bars([100] * 25)
+        tracker.observe("s", "SPY", bars[0]["ts"], "BUY", 100,
+                        origin=ORIGIN_FORWARD)
+        tracker.resolve_outcomes("SPY", bars)
+
+        self.assertEqual(tracker.summary()["forward_sample_size"], 1)
+        self.assertTrue(tracker.records[0].is_fully_resolved())
+
+
 class TestPersistenceRoundTrip(unittest.TestCase):
     def test_save_and_restore(self):
         tracker = ShadowTracker()
@@ -158,6 +251,14 @@ class TestPersistenceRoundTrip(unittest.TestCase):
         tracker.observe("s", "X", "2024-01-01", "BUY", 100.0)
         restored = ShadowTracker.from_dict(tracker.to_dict())
         self.assertFalse(restored.observe("s", "X", "2024-01-01", "BUY", 100.0))
+
+    def test_forward_metadata_persists_round_trip(self):
+        tracker = ShadowTracker()
+        tracker.initialize_forward_observation({"SPY": "2024-01-03"})
+        restored = ShadowTracker.from_dict(tracker.to_dict())
+        self.assertTrue(restored.forward_observation_started)
+        self.assertEqual(restored.forward_started_after, {"SPY": "2024-01-03"})
+        self.assertEqual(restored.forward_observed_through, {"SPY": "2024-01-03"})
 
 
 class TestSummaryOriginSplit(unittest.TestCase):

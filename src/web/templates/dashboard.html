@@ -158,7 +158,7 @@
           <a class="action" href="/api/status">View API Status</a>
           <a class="action" href="/health">Health Check</a>
           <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy Refresh Command</button>
-          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking">Copy Shadow Command</button>
+          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking --mode forward">Copy Shadow Command</button>
           <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway Setup</button>
           <button class="action primary" type="button" data-admin-refresh>Refresh Data + Shadow</button>
         </div>
@@ -225,9 +225,23 @@
           <div class="chip-row">
             <span class="pill muted">resolved: {{ shadow.resolved }}</span>
             <span class="pill muted">pending: {{ shadow.pending }}</span>
-            <span class="pill {% if shadow.enough_data %}safe{% else %}warn{% endif %}">enough forward data: {{ shadow.enough_data|string|lower }}</span>
+            <span class="pill {% if shadow.forward_observation_started %}safe{% else %}warn{% endif %}">
+              {% if not shadow.forward_observation_started %}
+                Forward: not started
+              {% elif shadow.forward_observed == 0 %}
+                Forward: initialized - waiting
+              {% else %}
+                Forward: collecting
+              {% endif %}
+            </span>
+            <span class="pill {% if shadow.enough_forward_data %}safe{% else %}warn{% endif %}">enough forward data: {{ shadow.enough_forward_data|string|lower }}</span>
+          </div>
+          <div class="keyline">
+            <div><span>Observed through</span><strong>{{ shadow.forward_observed_through or "not started" }}</strong></div>
+            <div><span>Last forward records</span><strong>{{ shadow.new_forward_records_last_run }}</strong></div>
           </div>
           <p class="muted">{{ shadow.verdict }}</p>
+          <p class="muted" style="margin-top:8px">No trades placed. No paper portfolio impact.</p>
         </div>
       </div>
     </section>
@@ -298,7 +312,7 @@
           const payload = await response.json();
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Refresh failed.");
           refreshStatus.className = "action-status ok";
-          refreshStatus.textContent = `Refresh complete. Latest bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.`;
+          refreshStatus.textContent = `${payload.forward_message} Latest bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.`;
         } catch (error) {
           refreshStatus.className = "action-status error";
           refreshStatus.textContent = error.message;

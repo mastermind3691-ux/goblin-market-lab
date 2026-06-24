@@ -27,7 +27,7 @@ from ..paper.shadow_tracker import ShadowTracker
 from ..safety.gate import safety_state
 from ..scorecard.scorecard import build_scorecard
 from tools.refresh_market_data import refresh_market_data
-from tools.run_shadow_tracking import run_shadow_tracking
+from tools.run_shadow_tracking import run_forward_observation
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
@@ -89,6 +89,12 @@ def dashboard_summary(scorecards: list[dict], shadow: dict) -> dict:
         next_step = "Next: run manual refreshes over time to begin forward observation."
     else:
         next_step = "Next: keep collecting forward evidence before considering paper portfolio simulation."
+    if shadow.get("forward_observed", 0) > 0:
+        forward_status = "Forward evidence is collecting"
+    elif shadow.get("forward_observation_started", False):
+        forward_status = "Forward observation initialized - waiting for next completed bar"
+    else:
+        forward_status = "Forward evidence has not started"
 
     return {
         "instruments": instruments,
@@ -96,7 +102,7 @@ def dashboard_summary(scorecards: list[dict], shadow: dict) -> dict:
             "headline": "No proven edge yet",
             "measurement": "Strategies are being measured, not trusted",
             "historical": "Historical shadow replay exists" if shadow.get("historical_bootstrap", 0) else "Historical shadow replay not started",
-            "forward": "Forward evidence has not started" if shadow.get("forward_observed", 0) == 0 else "Forward evidence is collecting",
+            "forward": forward_status,
         },
         "safety": [
             "No real trades",
@@ -163,7 +169,7 @@ def create_app() -> Flask:
                 REFRESH_SYMBOLS, REFRESH_START,
                 output_dir=real_data_dir,
             )
-            shadow = run_shadow_tracking()
+            shadow = run_forward_observation()
             s = safety_state()
             return jsonify({
                 "ok": True,
@@ -173,6 +179,13 @@ def create_app() -> Flask:
                 "shadow_total": shadow["total"],
                 "historical_bootstrap": shadow["historical_bootstrap"],
                 "forward_observed": shadow["forward_observed"],
+                "forward_observation_started": shadow["forward_observation_started"],
+                "forward_started_after": shadow["forward_started_after"],
+                "forward_observed_through": shadow["forward_observed_through"],
+                "new_forward_records_last_run": shadow["new_forward_records_last_run"],
+                "forward_sample_size": shadow["forward_sample_size"],
+                "enough_forward_data": shadow["enough_forward_data"],
+                "forward_message": shadow["forward_message"],
                 "can_place_orders": s.can_place_orders,
             })
         finally:

@@ -62,13 +62,18 @@ To populate it on Railway:
    ```
 3. **Run the one-time bootstrap** (Railway shell or one-off command):
    ```bash
-   python -m tools.run_shadow_tracking
+   python -m tools.run_shadow_tracking --mode historical-bootstrap
    ```
    This walks all historical bars and writes `historical_bootstrap` records.
    The dashboard will show them on the next page load.
-4. **Forward observed** stays 0 until a future forward-observation step is
-   implemented and run. Historical bootstrap is replay, not true forward
-   evidence — the dashboard says so honestly.
+4. **Initialize true forward observation**:
+   ```bash
+   python -m tools.run_shadow_tracking --mode forward
+   ```
+   The first forward run sets the watermark at the latest completed bar and
+   creates 0 forward records. Later manual forward runs only record signals from
+   newer completed bars. Historical bootstrap is replay, not true forward
+   evidence -- the dashboard says so honestly.
 
 **Safety:** `run_shadow_tracking` is record-only. No trades are placed, no
 paper portfolio is mutated, no order/broker/execution code exists in this repo.
@@ -89,8 +94,10 @@ SHADOW_STATE_PATH=/mnt/data/shadow_state.json
 ```
 
 It refreshes market CSV/meta files into `REAL_DATA_DIR`, then updates the shadow
-ledger. It does not place trades, create orders, run on a schedule, poll the
-dashboard, or mutate the paper portfolio.
+ledger in forward observation mode. If no forward watermark exists, it
+initializes one and waits for the next completed bar. It does not place trades,
+create orders, run on a schedule, poll the dashboard, or mutate the paper
+portfolio.
 
 ## Tests
 

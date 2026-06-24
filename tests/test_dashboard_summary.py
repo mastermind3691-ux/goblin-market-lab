@@ -45,6 +45,14 @@ class TestDashboardSummary(unittest.TestCase):
         self.assertIn("keep collecting forward evidence", summary["next_step"])
         self.assertEqual(summary["outcome"]["forward"], "Forward evidence is collecting")
 
+    def test_initialized_forward_status_is_honest(self):
+        summary = dashboard_summary([], {
+            "historical_bootstrap": 0,
+            "forward_observed": 0,
+            "forward_observation_started": True,
+        })
+        self.assertIn("initialized", summary["outcome"]["forward"])
+
 
 class TestDashboardStatusApi(unittest.TestCase):
     def setUp(self):
@@ -77,6 +85,7 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertEqual(body.count("data-copy="), 3)
         self.assertNotIn("<form", body.lower())
         self.assertNotIn("method=\"post\"", body.lower())
+        self.assertIn("Forward:", body)
 
 
 class TestAdminRefresh(unittest.TestCase):
@@ -123,7 +132,7 @@ class TestAdminRefresh(unittest.TestCase):
         headers = _basic()
         headers["X-Goblin-Action"] = "refresh-market-data"
         with patch.object(web_app, "refresh_market_data") as refresh, \
-             patch.object(web_app, "run_shadow_tracking") as shadow:
+             patch.object(web_app, "run_forward_observation") as shadow:
             refresh.return_value = {
                 "symbols": ["SPY", "GLD"],
                 "output_dir": "/mnt/data/real",
@@ -133,6 +142,13 @@ class TestAdminRefresh(unittest.TestCase):
                 "total": 429,
                 "historical_bootstrap": 429,
                 "forward_observed": 0,
+                "forward_observation_started": True,
+                "forward_started_after": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "forward_observed_through": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "new_forward_records_last_run": 0,
+                "forward_sample_size": 0,
+                "enough_forward_data": False,
+                "forward_message": "Forward observation initialized - waiting for next completed bar.",
             }
             response = self.client.post("/admin/refresh", headers=headers)
 
@@ -141,6 +157,8 @@ class TestAdminRefresh(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["can_place_orders"])
         self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertTrue(payload["forward_observation_started"])
+        self.assertEqual(payload["new_forward_records_last_run"], 0)
         refresh.assert_called_once_with(["SPY", "GLD"], "2000-01-01", output_dir="/mnt/data/real")
         shadow.assert_called_once_with()
 

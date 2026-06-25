@@ -93,7 +93,7 @@ def dashboard_summary(scorecards: list[dict], shadow: dict) -> dict:
     if shadow.get("forward_observed", 0) > 0:
         forward_status = "Forward evidence is collecting"
     elif shadow.get("forward_observation_started", False):
-        forward_status = "Forward observation initialized - waiting for next completed bar"
+        forward_status = "Forward observation initialized"
     else:
         forward_status = "Forward evidence has not started"
 
@@ -109,7 +109,7 @@ def dashboard_summary(scorecards: list[dict], shadow: dict) -> dict:
             "No real trades",
             "No paper portfolio trades yet",
             "No broker/order/execution code",
-            "can_place_orders = false",
+            "Order placement locked",
         ],
         "next_step": next_step,
     }

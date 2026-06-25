@@ -116,24 +116,31 @@
     .ring-core .cap { color:var(--muted); font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
 
     .hero-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+    .hero-row.compact { gap:7px; margin-top:14px; }
 
     .notice {
       display:flex; align-items:center; gap:9px;
       margin-top:14px; padding:10px 13px;
       border-radius:11px;
-      border:1px solid rgba(251, 191, 36, .34);
-      background:linear-gradient(180deg, rgba(60, 49, 16, .6), rgba(38, 31, 12, .5));
-      color:#f3dca0; font-size:13px; font-weight:600;
+      border:1px solid rgba(56, 189, 248, .28);
+      background:linear-gradient(180deg, rgba(18, 36, 61, .64), rgba(11, 24, 44, .56));
+      color:#d4e7fb; font-size:13px; font-weight:650;
     }
     .notice.safe {
       border-color:rgba(52, 211, 153, .32);
       background:linear-gradient(180deg, rgba(13, 48, 31, .6), rgba(9, 31, 22, .5));
       color:#a9efcb;
     }
-    .notice .dot { width:8px; height:8px; border-radius:50%; background:var(--warn); flex:0 0 auto; box-shadow:0 0 10px rgba(251, 191, 36, .7); }
+    .notice .dot { width:8px; height:8px; border-radius:50%; background:var(--accent); flex:0 0 auto; box-shadow:0 0 10px rgba(56, 189, 248, .55); }
     .notice.safe .dot { background:var(--good); box-shadow:0 0 10px rgba(52, 211, 153, .7); }
 
     .action-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+    .tool-row {
+      display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+      margin-top:16px; padding-top:14px; border-top:1px solid var(--line-soft);
+    }
+    .tool-label { color:var(--muted); font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
+    .tool-row .action-row { margin-top:0; }
     .action {
       appearance:none;
       display:inline-flex; align-items:center; gap:6px;
@@ -166,6 +173,7 @@
     }
     .pill.safe { border-color:rgba(52, 211, 153, .42); color:#aeefce; background:rgba(13, 44, 30, .6); }
     .pill.warn { border-color:rgba(251, 191, 36, .42); color:#f4d68d; background:rgba(48, 39, 14, .6); }
+    .pill.watch { border-color:rgba(122, 144, 178, .34); color:#c5d4ea; background:rgba(20, 31, 51, .55); }
     .pill.danger { border-color:rgba(251, 113, 133, .45); color:#ffc1cb; background:rgba(48, 20, 27, .6); }
     .pill.muted { border-color:rgba(122, 144, 178, .34); color:#aebdd6; background:rgba(20, 31, 51, .6); }
     .pill.accent { border-color:rgba(56, 189, 248, .5); color:#bfe6ff; background:rgba(16, 44, 70, .7); }
@@ -293,6 +301,34 @@
     .score-text { color:#cedded; font-size:14px; line-height:1.5; margin-top:9px; }
     .evidence-progress { margin-top:11px; }
     .evidence-progress .muted { margin-top:6px; font-size:12px; }
+    .scorecard-head { display:flex; align-items:flex-start; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .scorecard-head .headline { margin-bottom:0; }
+    .metric-strip { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:8px; margin-top:12px; }
+    .metric {
+      min-width:0; padding:9px 10px; border-radius:11px;
+      border:1px solid var(--line-soft);
+      background:rgba(11, 23, 43, .7);
+    }
+    .metric span {
+      display:block; color:var(--muted); font-size:10.5px; text-transform:uppercase;
+      font-weight:800; letter-spacing:.05em;
+    }
+    .metric strong { display:block; margin-top:3px; color:var(--text); font-size:15px; overflow-wrap:anywhere; }
+    article.card > p.muted:last-child { display:none; }
+    .score-metrics {
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      padding:10px;
+      border:1px solid var(--line-soft);
+      border-radius:12px;
+      background:rgba(9, 20, 38, .52);
+    }
+    .score-metrics div { border-top:0; padding-top:0; }
+    .score-stats { gap:8px; }
+    .score-stats .pill {
+      min-height:28px;
+      padding:4px 11px;
+      background:rgba(18, 35, 60, .55);
+    }
 
     .foot { margin-top:22px; text-align:center; color:var(--muted); font-size:12px; line-height:1.6; }
 
@@ -303,6 +339,8 @@
       .hero-ring { width:90px; height:90px; }
       .hero-ring .ring-core { width:72px; height:72px; }
       .cockpit-strip { grid-template-columns:1fr 1fr; }
+      .metric-strip { grid-template-columns:1fr; }
+      .score-metrics { grid-template-columns:1fr 1fr; }
       .keyline, .shadow-split { grid-template-columns:1fr 1fr; }
       .price-value { font-size:25px; }
       .topbar-pills { justify-content:flex-start; }
@@ -310,6 +348,7 @@
     }
     @media (max-width: 460px) {
       .cockpit-strip { grid-template-columns:1fr; }
+      .score-metrics { grid-template-columns:1fr; }
     }
     @media (min-width: 761px) and (max-width: 1020px) {
       .cockpit-strip { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -369,10 +408,9 @@
           </div>
         </div>
 
-        <div class="hero-row">
-          <span class="pill safe"><span class="tick">●</span> can_place_orders = {{ safety.can_place_orders|string|lower }}</span>
+        <div class="hero-row compact">
+          <span class="pill safe"><span class="tick">●</span> Order placement locked</span>
           <span class="pill muted">{{ summary.outcome.historical }}</span>
-          <span class="pill accent">{{ summary.outcome.measurement }}</span>
         </div>
 
         <div class="notice {% if forward_samples > 0 %}safe{% endif %}">
@@ -384,16 +422,6 @@
           {% endif %}
         </div>
 
-        <div class="action-row" data-safe-actions>
-          <a class="action" href="/api/status">API status</a>
-          <a class="action" href="/health">Health check</a>
-          <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy refresh command</button>
-          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking --mode forward">Copy shadow command</button>
-          <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway setup</button>
-          <button class="action primary" type="button" data-admin-refresh>Refresh data + shadow</button>
-        </div>
-        <div class="action-status" data-admin-refresh-status></div>
-
         <div class="cockpit-strip" data-cockpit-gauges>
           <article class="gauge-card" data-safety-lock-gauge>
             <div class="gauge-top">
@@ -403,7 +431,7 @@
               </div>
               <div class="gauge-ring good" aria-hidden="true">100%</div>
             </div>
-            <div class="gauge-note">can_place_orders = {{ safety.can_place_orders|string|lower }}. No broker, order or execution code.</div>
+            <div class="gauge-note">Order placement is locked. No broker, order or execution code.</div>
           </article>
           <article class="gauge-card" data-forward-evidence-gauge data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
             <div class="gauge-top">
@@ -440,6 +468,19 @@
           </article>
         </div>
 
+        <div class="tool-row" data-safe-actions>
+          <div class="tool-label">Research tools</div>
+          <div class="action-row">
+            <a class="action" href="/api/status">API status</a>
+            <a class="action" href="/health">Health check</a>
+            <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy refresh command</button>
+            <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking --mode forward">Copy shadow command</button>
+            <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway setup</button>
+            <button class="action primary" type="button" data-admin-refresh>Refresh data + shadow</button>
+          </div>
+        </div>
+        <div class="action-status" data-admin-refresh-status></div>
+
         <div class="next">{{ summary.next_step }}</div>
       </div>
 
@@ -466,9 +507,9 @@
         <div class="chip-row">
           <span class="pill {% if market_info.market_clock.market_state == 'open' %}safe{% else %}muted{% endif %}" style="text-transform:capitalize">market: {{ market_info.market_clock.market_state }}</span>
           <span class="pill muted">session: {{ market_info.market_clock.core_session }}</span>
-          <span class="pill warn">holidays: {{ market_info.market_clock.holiday_calendar_accuracy }}</span>
+          <span class="pill watch">holiday calendar: not modeled</span>
           <span class="pill accent">watch-only</span>
-          <span class="pill safe">trade impact: {{ market_info.trade_impact }}</span>
+          <span class="pill safe">No trade impact</span>
         </div>
         <div class="keyline">
           <div><span>Next open estimate</span><strong>{{ market_info.market_clock.next_open_est }}</strong></div>
@@ -513,7 +554,7 @@
               {% else %}
                 <span class="pill safe">fresh data</span>
               {% endif %}
-              <span class="pill muted">{{ item.trade_impact }} trade impact</span>
+              <span class="pill muted">No trade impact</span>
             </div>
           </div>
           {% endfor %}
@@ -529,7 +570,7 @@
           <div class="headline">{{ item.symbol }} · {{ item.label }}</div>
           <div class="chip-row">
             <span class="pill muted">source: {{ item.source }} CSV</span>
-            <span class="pill {% if item.adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ item.adjustment }}</span>
+            <span class="pill {% if item.adjustment == 'unknown' %}watch{% else %}muted{% endif %}">{% if item.adjustment == 'unknown' %}Adjustment not verified{% else %}{{ item.adjustment }} prices{% endif %}</span>
             {% if item.data_is_stale %}
               <span class="pill warn">stale data</span>
             {% else %}
@@ -586,10 +627,19 @@
                 Forward: collecting
               {% endif %}
             </span>
-            <span class="pill {% if shadow.enough_forward_data %}safe{% else %}warn{% endif %}">enough forward data: {{ shadow.enough_forward_data|string|lower }}</span>
+            <span class="pill {% if shadow.enough_forward_data %}safe{% else %}watch{% endif %}">{% if shadow.enough_forward_data %}Enough forward data{% else %}Not enough forward data yet{% endif %}</span>
           </div>
           <div class="keyline">
-            <div><span>Observed through</span><strong>{{ shadow.forward_observed_through or "not started" }}</strong></div>
+            <div>
+              <span>Observed through</span>
+              <strong>
+                {% if shadow.forward_observed_through %}
+                  {% for symbol, observed_date in shadow.forward_observed_through|dictsort %}{{ symbol }} {{ observed_date }}{% if not loop.last %}, {% endif %}{% endfor %}
+                {% else %}
+                  not started
+                {% endif %}
+              </strong>
+            </div>
             <div><span>Last forward records</span><strong>{{ shadow.new_forward_records_last_run }}</strong></div>
           </div>
           <p class="muted" style="margin-top:9px">{{ shadow.verdict }}</p>
@@ -606,7 +656,7 @@
       <div class="grid">
         {% for c in scorecards %}
         <article class="card">
-          <div class="headline">{{ c.instrument }} · {{ c.strategy }}</div>
+          <div class="headline">{{ c.instrument }} · {{ c.strategy_label or c.strategy }}</div>
           <div class="subhead">{{ c.headline }}</div>
           <div class="chip-row">
             {% if c.synthetic %}
@@ -614,15 +664,15 @@
             {% else %}
               <span class="pill muted">source: {{ c.data_source }}</span>
             {% endif %}
-            <span class="pill {% if c.price_adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ c.price_adjustment }}</span>
-            <span class="pill {% if c.vs_benchmark == 'beats' %}safe{% elif c.vs_benchmark == 'lags' %}warn{% else %}muted{% endif %}">vs benchmark: {{ c.vs_benchmark }}</span>
+            <span class="pill {% if c.price_adjustment == 'unknown' %}watch{% else %}muted{% endif %}">{{ c.price_adjustment_label or c.price_adjustment }}</span>
+            <span class="pill {% if c.vs_benchmark == 'beats' %}safe{% elif c.vs_benchmark == 'lags' %}watch{% else %}muted{% endif %}">{{ c.vs_benchmark_label or c.vs_benchmark }}</span>
             {% if c.data_is_stale %}<span class="pill warn">stale data</span>{% endif %}
           </div>
-          <div class="keyline">
-            <div><span>Exposure</span><strong>{{ (c.exposure_pct * 100)|round(1) }}%</strong></div>
+          <div class="keyline score-metrics">
+            <div><span>Exposure</span><strong>{{ c.exposure_label or ((c.exposure_pct * 100)|round(1) ~ "%") }}</strong></div>
             <div><span>Bars tested</span><strong>{{ c.bars_tested }} / {{ c.available_bars }}</strong></div>
             <div><span>Latest bar</span><strong>{{ c.last_bar_date or "unknown" }}</strong></div>
-            <div><span>Benchmark</span><strong>{{ c.strategy_return }} vs {{ c.buy_and_hold_return }}</strong></div>
+            <div><span>Benchmark</span><strong>{{ c.strategy_return_label or c.strategy_return }} vs {{ c.buy_and_hold_return_label or c.buy_and_hold_return }}</strong></div>
           </div>
           {% set trade_count = c.trades or 0 %}
           {% set score_pct = 100 if trade_count >= evidence_target else ((trade_count * 100 / evidence_target)|round(0, 'floor')) %}
@@ -631,11 +681,12 @@
             <div class="muted">Evidence quantity: {{ trade_count }} / {{ evidence_target }} trades. This is sample progress, not edge strength.</div>
           </div>
           <p class="score-text">{{ c.verdict }}</p>
-          <div class="chip-row">
+          <div class="chip-row score-stats">
             <span class="pill muted">trades: {{ c.trades }}</span>
-            <span class="pill muted">win rate: {{ c.win_rate }}</span>
-            <span class="pill muted">expectancy/trade: {{ c.expectancy_per_trade }}</span>
+            <span class="pill muted">win rate: {{ c.win_rate_label or c.win_rate }}</span>
+            <span class="pill muted">expectancy: {{ c.expectancy_per_trade_label or c.expectancy_per_trade }}</span>
           </div>
+          <p class="muted" style="margin-top:9px">Research-only: human approval required before anything advances. Pilot not ready.</p>
           {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
           <p class="muted" style="margin-top:9px">human approval required: {{ c.required_human_approval }} · pilot-ready: {{ c.ready_for_pilot }}</p>
         </article>

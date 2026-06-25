@@ -31,7 +31,7 @@ class TestDashboardSummary(unittest.TestCase):
 
         self.assertEqual(summary["outcome"]["headline"], "No proven edge yet")
         self.assertEqual(summary["outcome"]["forward"], "Forward evidence has not started")
-        self.assertIn("can_place_orders = false", summary["safety"])
+        self.assertIn("Order placement locked", summary["safety"])
         self.assertIn("manual refreshes", summary["next_step"])
         spy = summary["instruments"][0]
         self.assertEqual(spy["symbol"], "SPY")
@@ -82,10 +82,10 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertIn("data-admin-refresh", body)
         self.assertIn("data-cockpit-gauges", body)
         self.assertIn("data-safety-lock-gauge", body)
-        self.assertIn("can_place_orders = false", body)
+        self.assertIn("Order placement locked", body)
         self.assertIn("ETF Market Info", body)
         self.assertIn("watch-only", body)
-        self.assertIn("trade impact: none", body)
+        self.assertIn("No trade impact", body)
         self.assertIn('href="/api/status"', body)
         self.assertIn('href="/health"', body)
         self.assertEqual(body.count("data-copy="), 3)
@@ -94,6 +94,8 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertNotIn("setInterval", body)
         self.assertNotIn("setinterval", body.lower())
         self.assertIn("Forward:", body)
+        self.assertNotIn("can_place_orders =", body)
+        self.assertNotIn("not_implemented", body)
 
     def test_dashboard_gauges_use_forward_and_trade_counts_only(self):
         scorecards = [{
@@ -128,7 +130,7 @@ class TestDashboardStatusApi(unittest.TestCase):
             "pending": 0,
             "forward_observation_started": True,
             "enough_forward_data": False,
-            "forward_observed_through": None,
+            "forward_observed_through": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
             "new_forward_records_last_run": 0,
             "verdict": "Forward observation initialized - waiting.",
         }
@@ -169,6 +171,11 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertNotIn('data-forward-sample-size="999"', body)
         self.assertIn('data-scorecard-evidence-progress data-trade-count="7" data-min-samples="30"', body)
         self.assertIn("This is sample progress, not edge strength.", body)
+        self.assertIn("holiday calendar: not modeled", body)
+        self.assertIn("SPY 2026-06-22", body)
+        self.assertNotIn("{'GLD':", body)
+        self.assertIn("Not enough forward data yet", body)
+        self.assertIn("Research-only: human approval required before anything advances. Pilot not ready.", body)
 
     def test_market_info_api_open_in_dev_and_read_only(self):
         with patch.object(web_app, "refresh_market_data") as refresh, \

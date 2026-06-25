@@ -22,6 +22,36 @@ from ..safety.gate import candidate_status
 CONCENTRATION_TOP1_LIMIT = 0.50   # one trade >50% of gross profit -> flag
 CONCENTRATION_TOP3_LIMIT = 0.80   # top three >80% -> flag
 STALE_DATA_DAYS = 30
+STRATEGY_LABELS = {
+    "sma_dip": "SMA Dip",
+    "trend_filter": "Trend Filter",
+}
+
+
+def strategy_label(strategy: str) -> str:
+    return STRATEGY_LABELS.get(strategy, strategy.replace("_", " ").title())
+
+
+def _percent_label(value: float, digits: int = 1) -> str:
+    return f"{value * 100:.{digits}f}%"
+
+
+def benchmark_label(vs_benchmark: str) -> str:
+    if vs_benchmark == "beats":
+        return "Beats buy-and-hold"
+    if vs_benchmark == "lags":
+        return "Lags buy-and-hold"
+    return "Benchmark not available"
+
+
+def adjustment_label(adjustment: str) -> str:
+    if adjustment == "unknown":
+        return "Adjustment not verified"
+    if adjustment == "adjusted":
+        return "Adjusted prices"
+    if adjustment == "unadjusted":
+        return "Unadjusted prices"
+    return adjustment.replace("_", " ").title()
 
 
 def concentration(returns: list[float]) -> dict:
@@ -146,6 +176,7 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
 
     return {
         "strategy": result.strategy,
+        "strategy_label": strategy_label(result.strategy),
         "instrument": result.instrument,
         "headline": headline,
         "verdict": " ".join(parts),
@@ -153,6 +184,7 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
         "data_source": meta.source,
         "synthetic": meta.synthetic,
         "price_adjustment": meta.adjustment,
+        "price_adjustment_label": adjustment_label(meta.adjustment),
         "evidence_grade": grade,
         # data freshness
         "last_bar_date": freshness["last_bar_date"],
@@ -164,16 +196,22 @@ def build_scorecard(result: BacktestResult, meta: DataMeta, **kwargs) -> dict:
         "date_range_tested": tested_range,
         # exposure
         "exposure_pct": exposure,
+        "exposure_label": _percent_label(exposure),
         # evidence
         "trades": report.n,
         "win_rate": round(report.win_rate, 4),
+        "win_rate_label": _percent_label(report.win_rate),
         "expectancy_per_trade": round(report.expectancy, 6),
+        "expectancy_per_trade_label": f"{_percent_label(report.expectancy, 2)} per trade",
         "enough_data": report.enough_data and not meta.synthetic,
         "distinguishable_from_zero": report.distinguishable_from_zero and not meta.synthetic,
         # benchmark
         "strategy_return": round(strat_return, 4),
+        "strategy_return_label": _percent_label(strat_return),
         "buy_and_hold_return": round(bh_return, 4),
+        "buy_and_hold_return_label": _percent_label(bh_return),
         "vs_benchmark": vs_benchmark,
+        "vs_benchmark_label": benchmark_label(vs_benchmark),
         # risk
         "concentration": conc,
         # gate

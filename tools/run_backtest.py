@@ -31,7 +31,7 @@ def main() -> None:
             result = backtest(strat, symbol, bars, fee_bps=inst.fee_bps)
             card = build_scorecard(result, meta, bars=bars,
                                    available_bars=len(all_bars))
-            print(f"\n[{card['strategy']} on {card['instrument']}] {card['headline']}")
+            print(f"\n[{card['strategy_label']} on {card['instrument']}] {card['headline']}")
             print(f"  {card['verdict']}")
             print(f"  data={card['data_source']} ({card['evidence_grade']}, "
                   f"adjustment={card['price_adjustment']})")

@@ -21,6 +21,7 @@ from flask import Flask, jsonify, render_template, request
 from .auth import auth_enabled, require_auth
 from ..backtest.engine import backtest
 from ..data.csv_adapter import CsvAdapter
+from ..data.market_info import market_info_payload
 from ..instruments.registry import INSTRUMENTS
 from ..paper.persistence import load_json
 from ..paper.shadow_tracker import ShadowTracker
@@ -138,6 +139,16 @@ def create_app() -> Flask:
             "dashboard_summary": dashboard_summary(scorecards, shadow),
         })
 
+    @app.get("/api/market-info")
+    @require_auth
+    def api_market_info():
+        s = safety_state()
+        payload = market_info_payload(DATA_DIR)
+        payload["safety"] = {
+            "can_place_orders": s.can_place_orders,
+        }
+        return jsonify(payload)
+
     @app.post("/admin/refresh")
     @require_auth
     def admin_refresh():
@@ -207,7 +218,8 @@ def create_app() -> Flask:
                                safety=safety_state(),
                                scorecards=scorecards,
                                shadow=shadow,
-                               summary=dashboard_summary(scorecards, shadow))
+                               summary=dashboard_summary(scorecards, shadow),
+                               market_info=market_info_payload(DATA_DIR))
 
     return app
 

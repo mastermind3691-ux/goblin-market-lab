@@ -126,6 +126,15 @@
       background:var(--panel-soft);
     }
     .shadow-box strong { display:block; font-size:22px; margin-top:2px; }
+    .market-row { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); margin-top:10px; }
+    .sparkline {
+      width:100%;
+      height:38px;
+      margin-top:10px;
+      border-top:1px solid var(--line-soft);
+      border-bottom:1px solid var(--line-soft);
+    }
+    .sparkline polyline { fill:none; stroke:#68d391; stroke-width:2; vector-effect:non-scaling-stroke; }
     .flag { color:var(--danger); font-size:13px; margin-top:8px; }
     .next { margin-top:12px; color:#d6e9de; font-size:14px; border-top:1px solid var(--line-soft); padding-top:12px; }
     .action-status { min-height:20px; margin-top:8px; color:var(--muted); font-size:13px; }
@@ -174,6 +183,52 @@
           {% endfor %}
         </div>
         <p class="muted" style="margin-top:8px">{{ safety.verdict }}</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>ETF Market Info</h2>
+      <div class="card">
+        <div class="chip-row">
+          <span class="pill {% if market_info.market_clock.market_state == 'open' %}safe{% else %}muted{% endif %}">market: {{ market_info.market_clock.market_state }}</span>
+          <span class="pill muted">session: {{ market_info.market_clock.core_session }}</span>
+          <span class="pill warn">holidays: {{ market_info.market_clock.holiday_calendar_accuracy }}</span>
+          <span class="pill safe">watch-only</span>
+          <span class="pill safe">trade impact: {{ market_info.trade_impact }}</span>
+        </div>
+        <div class="keyline">
+          <div><span>Next open estimate</span><strong>{{ market_info.market_clock.next_open_est }}</strong></div>
+          <div><span>Next close estimate</span><strong>{{ market_info.market_clock.next_close_est }}</strong></div>
+        </div>
+        <p class="muted" style="margin-top:8px">{{ market_info.market_clock.clock_note }}</p>
+        <div class="market-row">
+          {% for item in market_info.instruments %}
+          <div class="shadow-box">
+            <div class="headline">{{ item.symbol }} - {{ item.display_name }}</div>
+            <div class="chip-row">
+              <span class="pill muted">source: {{ item.source }} CSV</span>
+              <span class="pill {% if item.price_adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ item.price_adjustment }}</span>
+              {% if item.data_is_stale %}
+                <span class="pill warn">stale data</span>
+              {% else %}
+                <span class="pill safe">fresh data</span>
+              {% endif %}
+              <span class="pill safe">{{ item.status }}</span>
+            </div>
+            <div class="keyline">
+              <div><span>Latest close</span><strong>{{ item.latest_close|round(2) if item.latest_close is not none else "unknown" }}</strong></div>
+              <div><span>Day change</span><strong>{% if item.day_change_pct is not none %}{{ (item.day_change_pct * 100)|round(2) }}%{% else %}unknown{% endif %}</strong></div>
+              <div><span>Latest bar</span><strong>{{ item.latest_bar_date or "unknown" }}</strong></div>
+              <div><span>Bars available</span><strong>{{ item.bars_available }}</strong></div>
+            </div>
+            {% if item.sparkline_points %}
+            <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+              <polyline points="{{ item.sparkline_points }}"></polyline>
+            </svg>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
       </div>
     </section>
 

@@ -80,12 +80,31 @@ class TestDashboardStatusApi(unittest.TestCase):
 
         self.assertIn("data-safe-actions", body)
         self.assertIn("data-admin-refresh", body)
+        self.assertIn("ETF Market Info", body)
         self.assertIn('href="/api/status"', body)
         self.assertIn('href="/health"', body)
         self.assertEqual(body.count("data-copy="), 3)
         self.assertNotIn("<form", body.lower())
         self.assertNotIn("method=\"post\"", body.lower())
+        self.assertNotIn("setInterval", body)
         self.assertIn("Forward:", body)
+
+    def test_market_info_api_open_in_dev_and_read_only(self):
+        with patch.object(web_app, "refresh_market_data") as refresh, \
+             patch.object(web_app, "run_forward_observation") as forward:
+            response = self.client.get("/api/market-info")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertFalse(payload["safety"]["can_place_orders"])
+        self.assertEqual(payload["trade_impact"], "none")
+        self.assertIn("market_clock", payload)
+        self.assertIn("instruments", payload)
+        refresh.assert_not_called()
+        forward.assert_not_called()
+
+    def test_market_info_api_get_only(self):
+        self.assertEqual(self.client.post("/api/market-info").status_code, 405)
 
 
 class TestAdminRefresh(unittest.TestCase):
@@ -105,6 +124,10 @@ class TestAdminRefresh(unittest.TestCase):
             headers={"X-Goblin-Action": "refresh-market-data"},
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_market_info_requires_auth_when_password_set(self):
+        self.assertEqual(self.client.get("/api/market-info").status_code, 401)
+        self.assertEqual(self.client.get("/api/market-info", headers=_basic()).status_code, 200)
 
     def test_refresh_refuses_when_dashboard_password_unset(self):
         os.environ.pop("DASHBOARD_PASSWORD", None)

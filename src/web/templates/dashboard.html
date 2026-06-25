@@ -38,12 +38,21 @@
       margin-bottom:16px;
     }
     .panel, .card {
-      background:rgba(13, 25, 19, .92);
+      background:linear-gradient(180deg, rgba(17, 34, 25, .96), rgba(10, 20, 15, .94));
       border:1px solid var(--line-soft);
       border-radius:8px;
       box-shadow:0 18px 50px rgba(0, 0, 0, .22);
     }
-    .panel { padding:18px; }
+    .panel { padding:18px; position:relative; overflow:hidden; }
+    .panel::before, .card::before {
+      content:"";
+      position:absolute;
+      inset:0 0 auto;
+      height:1px;
+      background:linear-gradient(90deg, transparent, rgba(104, 211, 145, .34), transparent);
+      pointer-events:none;
+    }
+    .card { position:relative; overflow:hidden; }
     .eyebrow { color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
     h1 { font-size:26px; line-height:1.1; margin:6px 0 8px; letter-spacing:0; }
     h2 { font-size:15px; margin:0 0 10px; letter-spacing:0; }
@@ -89,6 +98,54 @@
     .pill.warn { background:var(--warn-bg); border-color:#725b22; color:#f2d88f; }
     .pill.danger { background:#2a1714; border-color:#7a3c2d; color:#ffc0ae; }
     .pill.muted { color:#b8ccbf; border-color:#2b4436; background:#102018; }
+    .cockpit-strip {
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:10px;
+      margin-top:14px;
+    }
+    .gauge-card {
+      min-width:0;
+      padding:11px;
+      border:1px solid rgba(66, 116, 82, .58);
+      border-radius:8px;
+      background:linear-gradient(180deg, rgba(19, 39, 28, .94), rgba(9, 18, 13, .94));
+      box-shadow:inset 0 1px 0 rgba(255, 255, 255, .04);
+    }
+    .gauge-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .gauge-label { color:#cde2d5; font-size:12px; font-weight:800; text-transform:uppercase; }
+    .gauge-value { color:var(--text); font-size:15px; font-weight:820; }
+    .gauge-note { color:var(--muted); font-size:12px; line-height:1.35; margin-top:7px; }
+    .gauge-ring {
+      width:42px;
+      height:42px;
+      flex:0 0 auto;
+      display:grid;
+      place-items:center;
+      border-radius:50%;
+      background:conic-gradient(var(--good) var(--ring, 100%), #1a2c22 0);
+      box-shadow:0 0 0 1px rgba(104, 211, 145, .22), inset 0 0 0 6px #0c1711;
+      color:#dff9e8;
+      font-size:10px;
+      font-weight:850;
+    }
+    .gauge-ring.warn { background:conic-gradient(var(--warn) var(--ring, 45%), #1a2c22 0); color:#ffe8a3; }
+    .meter {
+      height:7px;
+      margin-top:10px;
+      overflow:hidden;
+      border-radius:999px;
+      background:#15291f;
+      border:1px solid #244531;
+    }
+    .meter-fill {
+      display:block;
+      height:100%;
+      border-radius:999px;
+      background:linear-gradient(90deg, #4dbb72, var(--good));
+    }
+    .meter-fill.warn { background:linear-gradient(90deg, #b98b39, var(--warn)); }
+    .meter-fill.muted { background:linear-gradient(90deg, #6c8172, #9fb5a8); }
     .metric-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
     .metric {
       padding:11px;
@@ -127,31 +184,82 @@
     }
     .shadow-box strong { display:block; font-size:22px; margin-top:2px; }
     .market-row { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); margin-top:10px; }
+    .market-card {
+      min-width:0;
+      border:1px solid rgba(55, 96, 70, .72);
+      border-radius:8px;
+      padding:13px;
+      background:linear-gradient(180deg, rgba(15, 32, 23, .98), rgba(9, 17, 13, .98));
+    }
+    .price-row {
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:8px;
+    }
+    .price-value { font-size:29px; line-height:1; font-weight:850; letter-spacing:0; }
+    .change-pill {
+      display:inline-flex;
+      min-height:24px;
+      align-items:center;
+      padding:3px 8px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:800;
+      border:1px solid #2f7b4a;
+      color:#bdf3ce;
+      background:#13261a;
+    }
+    .change-pill.warn { border-color:#725b22; color:#f2d88f; background:var(--warn-bg); }
+    .sparkline-wrap {
+      margin-top:12px;
+      padding:8px;
+      border:1px solid var(--line-soft);
+      border-radius:8px;
+      background:rgba(5, 10, 7, .26);
+    }
     .sparkline {
       width:100%;
-      height:38px;
-      margin-top:10px;
-      border-top:1px solid var(--line-soft);
-      border-bottom:1px solid var(--line-soft);
+      height:44px;
+      display:block;
     }
-    .sparkline polyline { fill:none; stroke:#68d391; stroke-width:2; vector-effect:non-scaling-stroke; }
+    .sparkline polyline { fill:none; stroke:#68d391; stroke-width:2.4; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 3px rgba(104, 211, 145, .32)); }
     .flag { color:var(--danger); font-size:13px; margin-top:8px; }
     .next { margin-top:12px; color:#d6e9de; font-size:14px; border-top:1px solid var(--line-soft); padding-top:12px; }
     .action-status { min-height:20px; margin-top:8px; color:var(--muted); font-size:13px; }
     .action-status.ok { color:var(--good); }
     .action-status.error { color:var(--danger); }
     .score-text { color:#d6e4dc; font-size:14px; line-height:1.45; margin-top:8px; }
+    .evidence-progress { margin-top:10px; }
+    .evidence-progress .muted { margin-top:6px; }
     @media (max-width: 760px) {
       body { padding:14px; }
       .hero { grid-template-columns:1fr; }
       h1 { font-size:23px; }
+      .cockpit-strip { grid-template-columns:1fr; }
       .metric-grid, .keyline, .shadow-split { grid-template-columns:1fr; }
+      .price-value { font-size:25px; }
       .pill { white-space:normal; }
+    }
+    @media (min-width: 761px) and (max-width: 1020px) {
+      .cockpit-strip { grid-template-columns:repeat(2, minmax(0, 1fr)); }
     }
   </style>
 </head>
 <body>
   <main class="shell">
+    {% set evidence_target = 30 %}
+    {% set forward_samples = shadow.forward_sample_size or 0 %}
+    {% set forward_pct = 100 if forward_samples >= evidence_target else ((forward_samples * 100 / evidence_target)|round(0, 'floor')) %}
+    {% set freshness = namespace(stale=false) %}
+    {% for item in market_info.instruments %}
+      {% if item.data_is_stale %}
+        {% set freshness.stale = true %}
+      {% endif %}
+    {% endfor %}
+    {% set freshness_pct = 45 if freshness.stale else 100 %}
+    {% set market_pct = 100 if market_info.market_clock.market_state == 'open' else (25 if market_info.market_clock.market_state == 'weekend' else 55) %}
     <section class="hero">
       <div class="panel">
         <div class="eyebrow">Market research cockpit</div>
@@ -172,6 +280,51 @@
           <button class="action primary" type="button" data-admin-refresh>Refresh Data + Shadow</button>
         </div>
         <div class="action-status" data-admin-refresh-status></div>
+        <div class="cockpit-strip" data-cockpit-gauges>
+          <article class="gauge-card" data-safety-lock-gauge>
+            <div class="gauge-top">
+              <div>
+                <div class="gauge-label">Safety Lock</div>
+                <div class="gauge-value">Locked</div>
+              </div>
+              <div class="gauge-ring" aria-hidden="true">100%</div>
+            </div>
+            <div class="gauge-note">can_place_orders = {{ safety.can_place_orders|string|lower }}. No broker/order/execution code.</div>
+          </article>
+          <article class="gauge-card" data-forward-evidence-gauge data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
+            <div class="gauge-top">
+              <div>
+                <div class="gauge-label">Forward Evidence</div>
+                <div class="gauge-value">{{ forward_samples }} / {{ evidence_target }}</div>
+              </div>
+              <div class="gauge-ring {% if forward_samples == 0 %}warn{% endif %}" style="--ring: {{ forward_pct }}%" aria-hidden="true">{{ forward_pct|int }}%</div>
+            </div>
+            <div class="meter"><span class="meter-fill {% if forward_samples == 0 %}warn{% endif %}" style="width: {{ forward_pct }}%"></span></div>
+            <div class="gauge-note">Forward only: {% if forward_samples == 0 %}initialized - waiting{% else %}collecting observations{% endif %}.</div>
+          </article>
+          <article class="gauge-card" data-data-freshness-gauge>
+            <div class="gauge-top">
+              <div>
+                <div class="gauge-label">Data Freshness</div>
+                <div class="gauge-value">{% if freshness.stale %}Review{% else %}Fresh{% endif %}</div>
+              </div>
+              <div class="gauge-ring {% if freshness.stale %}warn{% endif %}" style="--ring: {{ freshness_pct }}%" aria-hidden="true">{{ freshness_pct }}%</div>
+            </div>
+            <div class="meter"><span class="meter-fill {% if freshness.stale %}warn{% endif %}" style="width: {{ freshness_pct }}%"></span></div>
+            <div class="gauge-note">{% for item in market_info.instruments %}{{ item.symbol }} {{ item.latest_bar_date or "unknown" }}{% if not loop.last %} / {% endif %}{% endfor %}</div>
+          </article>
+          <article class="gauge-card" data-market-session-gauge>
+            <div class="gauge-top">
+              <div>
+                <div class="gauge-label">Market State</div>
+                <div class="gauge-value">{{ market_info.market_clock.market_state }}</div>
+              </div>
+              <div class="gauge-ring {% if market_info.market_clock.market_state != 'open' %}warn{% endif %}" style="--ring: {{ market_pct }}%" aria-hidden="true">{{ market_pct }}%</div>
+            </div>
+            <div class="meter"><span class="meter-fill {% if market_info.market_clock.market_state != 'open' %}muted{% endif %}" style="width: {{ market_pct }}%"></span></div>
+            <div class="gauge-note">Regular-hours estimate; holidays not modeled.</div>
+          </article>
+        </div>
         <div class="next">{{ summary.next_step }}</div>
       </div>
 
@@ -203,8 +356,17 @@
         <p class="muted" style="margin-top:8px">{{ market_info.market_clock.clock_note }}</p>
         <div class="market-row">
           {% for item in market_info.instruments %}
-          <div class="shadow-box">
+          <div class="market-card">
             <div class="headline">{{ item.symbol }} - {{ item.display_name }}</div>
+            <div class="price-row">
+              <div>
+                <div class="muted">Latest close</div>
+                <div class="price-value">{{ item.latest_close|round(2) if item.latest_close is not none else "unknown" }}</div>
+              </div>
+              <span class="change-pill {% if item.day_change_pct is not none and item.day_change_pct < 0 %}warn{% endif %}">
+                {% if item.day_change_pct is not none %}{{ (item.day_change_pct * 100)|round(2) }}%{% else %}unknown{% endif %}
+              </span>
+            </div>
             <div class="chip-row">
               <span class="pill muted">source: {{ item.source }} CSV</span>
               <span class="pill {% if item.price_adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ item.price_adjustment }}</span>
@@ -216,15 +378,17 @@
               <span class="pill safe">{{ item.status }}</span>
             </div>
             <div class="keyline">
-              <div><span>Latest close</span><strong>{{ item.latest_close|round(2) if item.latest_close is not none else "unknown" }}</strong></div>
-              <div><span>Day change</span><strong>{% if item.day_change_pct is not none %}{{ (item.day_change_pct * 100)|round(2) }}%{% else %}unknown{% endif %}</strong></div>
+              <div><span>Day change</span><strong>{% if item.day_change is not none %}{{ item.day_change|round(2) }}{% else %}unknown{% endif %}</strong></div>
+              <div><span>Status</span><strong>{{ item.trade_impact }} trade impact</strong></div>
               <div><span>Latest bar</span><strong>{{ item.latest_bar_date or "unknown" }}</strong></div>
               <div><span>Bars available</span><strong>{{ item.bars_available }}</strong></div>
             </div>
             {% if item.sparkline_points %}
+            <div class="sparkline-wrap">
             <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
               <polyline points="{{ item.sparkline_points }}"></polyline>
             </svg>
+            </div>
             {% endif %}
           </div>
           {% endfor %}
@@ -277,6 +441,10 @@
               <div class="muted">sample size: {{ shadow.forward_sample_size }}</div>
             </div>
           </div>
+          <div class="evidence-progress" data-shadow-forward-progress data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
+            <div class="meter"><span class="meter-fill {% if forward_samples == 0 %}warn{% endif %}" style="width: {{ forward_pct }}%"></span></div>
+            <div class="muted">Forward only: {{ forward_samples }} / {{ evidence_target }} samples. Historical bootstrap is not counted as forward proof.</div>
+          </div>
           <div class="chip-row">
             <span class="pill muted">resolved: {{ shadow.resolved }}</span>
             <span class="pill muted">pending: {{ shadow.pending }}</span>
@@ -323,6 +491,12 @@
             <div><span>Bars tested</span><strong>{{ c.bars_tested }} / {{ c.available_bars }}</strong></div>
             <div><span>Latest bar</span><strong>{{ c.last_bar_date or "unknown" }}</strong></div>
             <div><span>Benchmark</span><strong>{{ c.strategy_return }} vs {{ c.buy_and_hold_return }}</strong></div>
+          </div>
+          {% set trade_count = c.trades or 0 %}
+          {% set score_pct = 100 if trade_count >= evidence_target else ((trade_count * 100 / evidence_target)|round(0, 'floor')) %}
+          <div class="evidence-progress" data-scorecard-evidence-progress data-trade-count="{{ trade_count }}" data-min-samples="{{ evidence_target }}">
+            <div class="meter"><span class="meter-fill {% if trade_count < evidence_target %}warn{% endif %}" style="width: {{ score_pct }}%"></span></div>
+            <div class="muted">Evidence quantity: {{ trade_count }} / {{ evidence_target }} trades. This is sample progress, not edge strength.</div>
           </div>
           <p class="score-text">{{ c.verdict }}</p>
           <div class="chip-row">

@@ -7,240 +7,309 @@
   <style>
     :root {
       color-scheme: dark;
-      --bg:#08110d;
-      --panel:#0d1913;
-      --panel-soft:#101f17;
-      --line:#224232;
-      --line-soft:#183124;
-      --text:#edf7f1;
-      --muted:#9fb5a8;
-      --good:#68d391;
-      --warn:#e7c36a;
-      --warn-bg:#2b2312;
-      --danger:#f29b7f;
+      --bg:#070c18;
+      --bg-2:#0a1222;
+      --panel-a:rgba(18, 31, 54, .96);
+      --panel-b:rgba(11, 20, 38, .96);
+      --line:#1e3358;
+      --line-soft:#172a49;
+      --text:#e9f1fc;
+      --muted:#93a7c6;
+      --accent:#38bdf8;
+      --accent-2:#2dd4bf;
+      --accent-deep:#1d6fb8;
+      --good:#34d399;
+      --good-soft:#10331f;
+      --warn:#fbbf24;
+      --warn-bg:#2a2310;
+      --danger:#fb7185;
     }
     * { box-sizing:border-box; }
     body {
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(38, 88, 62, .24), transparent 34rem),
-        linear-gradient(180deg, #0a1510 0%, var(--bg) 70%);
+        radial-gradient(900px 480px at 88% -8%, rgba(56, 189, 248, .16), transparent 60%),
+        radial-gradient(720px 420px at 6% 4%, rgba(45, 212, 191, .12), transparent 58%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 64%);
       color:var(--text);
       margin:0;
-      padding:24px;
+      padding:20px;
+      -webkit-font-smoothing:antialiased;
     }
     .shell { max-width:1180px; margin:0 auto; }
+
+    /* Top brand bar */
+    .topbar {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:16px;
+    }
+    .brand { display:flex; align-items:center; gap:11px; min-width:0; }
+    .brand-mark {
+      width:38px; height:38px; flex:0 0 auto;
+      display:grid; place-items:center;
+      border-radius:11px;
+      background:linear-gradient(160deg, rgba(56, 189, 248, .26), rgba(45, 212, 191, .14));
+      border:1px solid rgba(56, 189, 248, .42);
+      box-shadow:inset 0 1px 0 rgba(255, 255, 255, .12), 0 6px 18px rgba(7, 18, 38, .6);
+      font-size:18px;
+    }
+    .brand-text { min-width:0; }
+    .brand-text .name { font-size:16px; font-weight:820; letter-spacing:.2px; line-height:1.1; }
+    .brand-text .sub { color:var(--muted); font-size:12px; font-weight:600; margin-top:2px; }
+    .topbar-pills { display:flex; flex-wrap:wrap; gap:7px; justify-content:flex-end; }
+
+    /* Cards / panels */
+    .panel, .card {
+      position:relative;
+      overflow:hidden;
+      background:linear-gradient(180deg, var(--panel-a), var(--panel-b));
+      border:1px solid var(--line-soft);
+      border-radius:16px;
+      box-shadow:0 22px 52px rgba(4, 10, 24, .5);
+    }
+    .panel::before, .card::before {
+      content:"";
+      position:absolute; inset:0 0 auto; height:1px;
+      background:linear-gradient(90deg, transparent, rgba(56, 189, 248, .55), transparent);
+      pointer-events:none;
+    }
+    .panel { padding:20px; }
+    .card { padding:16px; }
+
     .hero {
       display:grid;
-      grid-template-columns:minmax(0, 1.4fr) minmax(260px, .8fr);
+      grid-template-columns:minmax(0, 1.45fr) minmax(250px, .8fr);
       gap:16px;
       align-items:stretch;
       margin-bottom:16px;
     }
-    .panel, .card {
-      background:linear-gradient(180deg, rgba(17, 34, 25, .96), rgba(10, 20, 15, .94));
-      border:1px solid var(--line-soft);
-      border-radius:8px;
-      box-shadow:0 18px 50px rgba(0, 0, 0, .22);
+    .eyebrow { color:var(--accent); font-size:11.5px; font-weight:800; letter-spacing:.14em; text-transform:uppercase; }
+    h1 { font-size:27px; line-height:1.08; margin:8px 0 8px; letter-spacing:.2px; }
+    h2 {
+      font-size:13px; margin:0 0 12px; letter-spacing:.12em;
+      text-transform:uppercase; color:var(--muted); font-weight:800;
     }
-    .panel { padding:18px; position:relative; overflow:hidden; }
-    .panel::before, .card::before {
-      content:"";
-      position:absolute;
-      inset:0 0 auto;
-      height:1px;
-      background:linear-gradient(90deg, transparent, rgba(104, 211, 145, .34), transparent);
-      pointer-events:none;
-    }
-    .card { position:relative; overflow:hidden; }
-    .eyebrow { color:var(--muted); font-size:12px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; }
-    h1 { font-size:26px; line-height:1.1; margin:6px 0 8px; letter-spacing:0; }
-    h2 { font-size:15px; margin:0 0 10px; letter-spacing:0; }
     p { margin:0; }
-    .lead { color:#cfe0d6; font-size:15px; max-width:68ch; }
-    .hero-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
-    .action-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+    .lead { color:#c6d6ec; font-size:15px; line-height:1.5; max-width:64ch; }
+
+    .hero-top { display:flex; gap:16px; align-items:flex-start; justify-content:space-between; }
+    .hero-ring {
+      flex:0 0 auto;
+      display:grid; place-items:center;
+      width:104px; height:104px;
+      border-radius:50%;
+      background:conic-gradient(var(--accent) calc(var(--ring, 0%) * 1), rgba(45, 72, 114, .5) 0);
+      box-shadow:0 0 0 1px rgba(56, 189, 248, .28), 0 10px 26px rgba(8, 22, 44, .6);
+    }
+    .hero-ring.warn { background:conic-gradient(var(--warn) calc(var(--ring, 0%) * 1), rgba(64, 60, 30, .5) 0); }
+    .hero-ring .ring-core {
+      width:84px; height:84px; border-radius:50%;
+      display:grid; place-items:center; text-align:center;
+      background:radial-gradient(circle at 50% 35%, #15233f, #0c1830 72%);
+      border:1px solid rgba(56, 189, 248, .2);
+    }
+    .ring-core .pct { font-size:20px; font-weight:860; line-height:1; }
+    .ring-core .cap { color:var(--muted); font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.06em; margin-top:3px; }
+
+    .hero-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:16px; }
+
+    .notice {
+      display:flex; align-items:center; gap:9px;
+      margin-top:14px; padding:10px 13px;
+      border-radius:11px;
+      border:1px solid rgba(251, 191, 36, .34);
+      background:linear-gradient(180deg, rgba(60, 49, 16, .6), rgba(38, 31, 12, .5));
+      color:#f3dca0; font-size:13px; font-weight:600;
+    }
+    .notice.safe {
+      border-color:rgba(52, 211, 153, .32);
+      background:linear-gradient(180deg, rgba(13, 48, 31, .6), rgba(9, 31, 22, .5));
+      color:#a9efcb;
+    }
+    .notice .dot { width:8px; height:8px; border-radius:50%; background:var(--warn); flex:0 0 auto; box-shadow:0 0 10px rgba(251, 191, 36, .7); }
+    .notice.safe .dot { background:var(--good); box-shadow:0 0 10px rgba(52, 211, 153, .7); }
+
+    .action-row { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
     .action {
       appearance:none;
-      display:inline-flex;
-      align-items:center;
-      min-height:30px;
-      padding:5px 10px;
-      border-radius:8px;
-      border:1px solid #315844;
-      background:#102119;
-      color:#e4f2ea;
-      font:inherit;
-      font-size:12px;
-      font-weight:700;
-      text-decoration:none;
-      cursor:pointer;
+      display:inline-flex; align-items:center; gap:6px;
+      min-height:32px; padding:6px 12px;
+      border-radius:10px;
+      border:1px solid rgba(56, 189, 248, .28);
+      background:rgba(20, 38, 64, .7);
+      color:#dceafb; font:inherit; font-size:12px; font-weight:700;
+      text-decoration:none; cursor:pointer;
+      transition:border-color .15s, background .15s, transform .05s;
     }
-    .action:hover { border-color:#4a7f62; background:#14281f; }
-    .action:focus-visible { outline:2px solid #68d391; outline-offset:2px; }
-    .action.primary { border-color:#4d8f67; background:#173322; color:#d7ffe3; }
-    .action:disabled { opacity:.55; cursor:not-allowed; }
+    .action:hover { border-color:rgba(56, 189, 248, .6); background:rgba(28, 52, 84, .85); }
+    .action:active { transform:translateY(1px); }
+    .action:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+    .action.primary {
+      border-color:rgba(45, 212, 191, .55);
+      background:linear-gradient(180deg, rgba(45, 212, 191, .26), rgba(29, 111, 184, .3));
+      color:#eafffb;
+    }
+    .action:disabled { opacity:.5; cursor:not-allowed; }
+
+    /* Pills */
     .pill {
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      min-height:24px;
-      padding:3px 9px;
+      display:inline-flex; align-items:center; gap:6px;
+      min-height:25px; padding:3px 10px;
       border-radius:999px;
-      border:1px solid #2c5a3c;
-      background:#13261a;
-      color:#dbece3;
-      font-size:12px;
-      font-weight:650;
-      white-space:nowrap;
+      border:1px solid rgba(56, 189, 248, .26);
+      background:rgba(18, 35, 60, .7);
+      color:#cfe0f5; font-size:12px; font-weight:650; white-space:nowrap;
     }
-    .pill.safe { border-color:#2f7b4a; color:#bdf3ce; }
-    .pill.warn { background:var(--warn-bg); border-color:#725b22; color:#f2d88f; }
-    .pill.danger { background:#2a1714; border-color:#7a3c2d; color:#ffc0ae; }
-    .pill.muted { color:#b8ccbf; border-color:#2b4436; background:#102018; }
-    .cockpit-strip {
-      display:grid;
-      grid-template-columns:repeat(4, minmax(0, 1fr));
-      gap:10px;
-      margin-top:14px;
-    }
+    .pill.safe { border-color:rgba(52, 211, 153, .42); color:#aeefce; background:rgba(13, 44, 30, .6); }
+    .pill.warn { border-color:rgba(251, 191, 36, .42); color:#f4d68d; background:rgba(48, 39, 14, .6); }
+    .pill.danger { border-color:rgba(251, 113, 133, .45); color:#ffc1cb; background:rgba(48, 20, 27, .6); }
+    .pill.muted { border-color:rgba(122, 144, 178, .34); color:#aebdd6; background:rgba(20, 31, 51, .6); }
+    .pill.accent { border-color:rgba(56, 189, 248, .5); color:#bfe6ff; background:rgba(16, 44, 70, .7); }
+    .pill .tick { color:var(--good); font-weight:900; }
+
+    /* Cockpit gauge strip */
+    .cockpit-strip { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:11px; margin-top:16px; }
     .gauge-card {
-      min-width:0;
-      padding:11px;
-      border:1px solid rgba(66, 116, 82, .58);
-      border-radius:8px;
-      background:linear-gradient(180deg, rgba(19, 39, 28, .94), rgba(9, 18, 13, .94));
-      box-shadow:inset 0 1px 0 rgba(255, 255, 255, .04);
+      min-width:0; padding:13px;
+      border:1px solid var(--line-soft); border-radius:13px;
+      background:linear-gradient(180deg, rgba(17, 32, 56, .9), rgba(10, 19, 36, .9));
     }
     .gauge-top { display:flex; align-items:center; justify-content:space-between; gap:8px; }
-    .gauge-label { color:#cde2d5; font-size:12px; font-weight:800; text-transform:uppercase; }
-    .gauge-value { color:var(--text); font-size:15px; font-weight:820; }
-    .gauge-note { color:var(--muted); font-size:12px; line-height:1.35; margin-top:7px; }
+    .gauge-label { color:#bdd0ea; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+    .gauge-value { color:var(--text); font-size:15px; font-weight:840; margin-top:2px; }
+    .gauge-note { color:var(--muted); font-size:11.5px; line-height:1.4; margin-top:8px; }
     .gauge-ring {
-      width:42px;
-      height:42px;
-      flex:0 0 auto;
-      display:grid;
-      place-items:center;
-      border-radius:50%;
-      background:conic-gradient(var(--good) var(--ring, 100%), #1a2c22 0);
-      box-shadow:0 0 0 1px rgba(104, 211, 145, .22), inset 0 0 0 6px #0c1711;
-      color:#dff9e8;
-      font-size:10px;
-      font-weight:850;
+      width:44px; height:44px; flex:0 0 auto;
+      display:grid; place-items:center; border-radius:50%;
+      background:conic-gradient(var(--accent) calc(var(--ring, 100%) * 1), rgba(45, 72, 114, .55) 0);
+      box-shadow:inset 0 0 0 6px #0c1830;
+      color:#dcefff; font-size:10px; font-weight:850;
     }
-    .gauge-ring.warn { background:conic-gradient(var(--warn) var(--ring, 45%), #1a2c22 0); color:#ffe8a3; }
+    .gauge-ring.warn { background:conic-gradient(var(--warn) calc(var(--ring, 45%) * 1), rgba(64, 60, 30, .55) 0); color:#ffe6a6; }
+    .gauge-ring.good { background:conic-gradient(var(--good) calc(var(--ring, 100%) * 1), rgba(20, 56, 38, .55) 0); color:#c8f7dc; }
+
     .meter {
-      height:7px;
-      margin-top:10px;
-      overflow:hidden;
-      border-radius:999px;
-      background:#15291f;
-      border:1px solid #244531;
+      height:7px; margin-top:11px; overflow:hidden;
+      border-radius:999px; background:rgba(16, 30, 52, .9);
+      border:1px solid var(--line-soft);
     }
-    .meter-fill {
-      display:block;
-      height:100%;
-      border-radius:999px;
-      background:linear-gradient(90deg, #4dbb72, var(--good));
-    }
+    .meter-fill { display:block; height:100%; border-radius:999px; background:linear-gradient(90deg, var(--accent-deep), var(--accent)); }
+    .meter-fill.good { background:linear-gradient(90deg, #1f9d68, var(--good)); }
     .meter-fill.warn { background:linear-gradient(90deg, #b98b39, var(--warn)); }
-    .meter-fill.muted { background:linear-gradient(90deg, #6c8172, #9fb5a8); }
-    .metric-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; }
-    .metric {
-      padding:11px;
-      border:1px solid var(--line-soft);
-      border-radius:8px;
-      background:var(--panel-soft);
+    .meter-fill.muted { background:linear-gradient(90deg, #46597a, #8da4c6); }
+
+    /* Generic layout helpers */
+    .section { margin-top:18px; }
+    .section-head { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:12px; }
+    .section-head h2 { margin:0; }
+    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(264px, 1fr)); }
+    .headline { font-weight:800; font-size:15px; margin-bottom:6px; }
+    .subhead { color:#bcd0ea; font-size:13px; margin-bottom:10px; }
+    .muted { color:var(--muted); font-size:13px; line-height:1.45; }
+    .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin:9px 0; }
+
+    .keyline { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:10px; margin-top:12px; }
+    .keyline div { border-top:1px solid var(--line-soft); padding-top:9px; min-width:0; }
+    .keyline span { display:block; color:var(--muted); font-size:10.5px; text-transform:uppercase; font-weight:800; letter-spacing:.05em; }
+    .keyline strong { display:block; margin-top:3px; font-size:14px; overflow-wrap:anywhere; }
+
+    /* Safety card */
+    .safety-list { display:grid; gap:8px; margin-top:4px; }
+    .safety-item {
+      display:flex; align-items:center; gap:10px;
+      padding:9px 11px; border-radius:11px;
+      border:1px solid rgba(52, 211, 153, .26);
+      background:linear-gradient(180deg, rgba(13, 44, 30, .55), rgba(9, 28, 21, .5));
+      font-size:13px; font-weight:650; color:#d6f3e4;
     }
-    .metric .label { color:var(--muted); font-size:12px; margin-bottom:4px; }
-    .metric .value { font-size:18px; font-weight:750; }
-    .section { margin-top:16px; }
-    .grid { display:grid; gap:14px; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); }
-    .card { padding:14px; }
-    .headline { font-weight:760; margin-bottom:6px; }
-    .subhead { color:#cbded3; font-size:13px; margin-bottom:10px; }
-    .muted { color:var(--muted); font-size:13px; }
-    .chip-row { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
-    .keyline {
-      display:grid;
-      grid-template-columns:repeat(2, minmax(0, 1fr));
-      gap:8px;
-      margin-top:10px;
+    .safety-item .check {
+      width:20px; height:20px; flex:0 0 auto; border-radius:50%;
+      display:grid; place-items:center;
+      background:rgba(52, 211, 153, .18); color:var(--good);
+      font-size:12px; font-weight:900;
     }
-    .keyline div {
-      border-top:1px solid var(--line-soft);
-      padding-top:8px;
-      min-width:0;
-    }
-    .keyline span { display:block; color:var(--muted); font-size:11px; text-transform:uppercase; font-weight:700; }
-    .keyline strong { display:block; margin-top:2px; font-size:14px; overflow-wrap:anywhere; }
-    .shadow-split { display:grid; gap:10px; grid-template-columns:repeat(2, minmax(0, 1fr)); margin-top:10px; }
+
+    /* Shadow evidence tiles */
+    .shadow-split { display:grid; gap:11px; grid-template-columns:repeat(2, minmax(0, 1fr)); margin-top:6px; }
     .shadow-box {
-      border:1px solid var(--line-soft);
-      border-radius:8px;
-      padding:12px;
-      background:var(--panel-soft);
+      border:1px solid var(--line-soft); border-radius:13px; padding:14px;
+      background:linear-gradient(180deg, rgba(17, 32, 56, .9), rgba(10, 19, 36, .9));
     }
-    .shadow-box strong { display:block; font-size:22px; margin-top:2px; }
-    .market-row { display:grid; gap:10px; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); margin-top:10px; }
+    .shadow-box .tag { color:var(--muted); font-size:11.5px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }
+    .shadow-box strong { display:block; font-size:30px; font-weight:860; margin:4px 0 2px; line-height:1; }
+    .shadow-box.accent { border-color:rgba(56, 189, 248, .34); }
+    .shadow-box.accent strong { color:#9fdcff; }
+
+    /* ETF market info */
+    .market-row { display:grid; gap:12px; grid-template-columns:repeat(auto-fit, minmax(232px, 1fr)); margin-top:12px; }
     .market-card {
-      min-width:0;
-      border:1px solid rgba(55, 96, 70, .72);
-      border-radius:8px;
-      padding:13px;
-      background:linear-gradient(180deg, rgba(15, 32, 23, .98), rgba(9, 17, 13, .98));
+      min-width:0; border:1px solid var(--line-soft); border-radius:14px; padding:15px;
+      background:linear-gradient(180deg, rgba(16, 30, 54, .94), rgba(9, 18, 35, .94));
     }
-    .price-row {
-      display:flex;
-      align-items:flex-end;
-      justify-content:space-between;
-      gap:10px;
-      margin-top:8px;
+    .mc-head { display:flex; align-items:center; gap:10px; }
+    .mc-badge {
+      width:38px; height:38px; flex:0 0 auto; border-radius:11px;
+      display:grid; place-items:center; font-size:12px; font-weight:850; letter-spacing:.3px;
+      color:#06121f;
     }
-    .price-value { font-size:29px; line-height:1; font-weight:850; letter-spacing:0; }
+    .mc-badge.spy { background:linear-gradient(160deg, #5cc6ff, #2b8fd6); box-shadow:0 6px 16px rgba(43, 143, 214, .4); }
+    .mc-badge.gld { background:linear-gradient(160deg, #f4cf6a, #d99a2b); box-shadow:0 6px 16px rgba(217, 154, 43, .4); color:#2a1c02; }
+    .mc-name { min-width:0; }
+    .mc-name .sym { font-size:15px; font-weight:840; line-height:1.1; }
+    .mc-name .full { color:var(--muted); font-size:12px; margin-top:1px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .price-row { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; margin-top:13px; }
+    .price-value { font-size:28px; line-height:1; font-weight:860; letter-spacing:.3px; }
     .change-pill {
-      display:inline-flex;
-      min-height:24px;
-      align-items:center;
-      padding:3px 8px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:800;
-      border:1px solid #2f7b4a;
-      color:#bdf3ce;
-      background:#13261a;
+      display:inline-flex; min-height:25px; align-items:center; gap:4px;
+      padding:3px 9px; border-radius:999px; font-size:12px; font-weight:820;
+      border:1px solid rgba(52, 211, 153, .45); color:#aeefce; background:rgba(13, 44, 30, .6);
     }
-    .change-pill.warn { border-color:#725b22; color:#f2d88f; background:var(--warn-bg); }
+    .change-pill.warn { border-color:rgba(251, 113, 133, .45); color:#ffc1cb; background:rgba(48, 20, 27, .6); }
     .sparkline-wrap {
-      margin-top:12px;
-      padding:8px;
-      border:1px solid var(--line-soft);
-      border-radius:8px;
-      background:rgba(5, 10, 7, .26);
+      margin-top:13px; padding:9px;
+      border:1px solid var(--line-soft); border-radius:11px;
+      background:linear-gradient(180deg, rgba(8, 18, 36, .5), rgba(7, 14, 28, .5));
     }
-    .sparkline {
-      width:100%;
-      height:44px;
-      display:block;
+    .sparkline { width:100%; height:46px; display:block; }
+    .sparkline polyline {
+      fill:none; stroke:url(#sparkStroke); stroke-width:2.4; vector-effect:non-scaling-stroke;
+      stroke-linecap:round; stroke-linejoin:round;
+      filter:drop-shadow(0 0 4px rgba(56, 189, 248, .4));
     }
-    .sparkline polyline { fill:none; stroke:#68d391; stroke-width:2.4; vector-effect:non-scaling-stroke; filter:drop-shadow(0 0 3px rgba(104, 211, 145, .32)); }
-    .flag { color:var(--danger); font-size:13px; margin-top:8px; }
-    .next { margin-top:12px; color:#d6e9de; font-size:14px; border-top:1px solid var(--line-soft); padding-top:12px; }
-    .action-status { min-height:20px; margin-top:8px; color:var(--muted); font-size:13px; }
+
+    .flag { color:var(--danger); font-size:13px; margin-top:9px; font-weight:600; }
+    .next {
+      margin-top:14px; padding-top:13px; color:#cfe0f5; font-size:14px;
+      border-top:1px solid var(--line-soft);
+    }
+    .next b { color:var(--accent); font-weight:800; }
+    .action-status { min-height:20px; margin-top:10px; color:var(--muted); font-size:13px; }
     .action-status.ok { color:var(--good); }
     .action-status.error { color:var(--danger); }
-    .score-text { color:#d6e4dc; font-size:14px; line-height:1.45; margin-top:8px; }
-    .evidence-progress { margin-top:10px; }
-    .evidence-progress .muted { margin-top:6px; }
+    .score-text { color:#cedded; font-size:14px; line-height:1.5; margin-top:9px; }
+    .evidence-progress { margin-top:11px; }
+    .evidence-progress .muted { margin-top:6px; font-size:12px; }
+
+    .foot { margin-top:22px; text-align:center; color:var(--muted); font-size:12px; line-height:1.6; }
+
     @media (max-width: 760px) {
-      body { padding:14px; }
+      body { padding:13px; }
       .hero { grid-template-columns:1fr; }
       h1 { font-size:23px; }
-      .cockpit-strip { grid-template-columns:1fr; }
-      .metric-grid, .keyline, .shadow-split { grid-template-columns:1fr; }
+      .hero-ring { width:90px; height:90px; }
+      .hero-ring .ring-core { width:72px; height:72px; }
+      .cockpit-strip { grid-template-columns:1fr 1fr; }
+      .keyline, .shadow-split { grid-template-columns:1fr 1fr; }
       .price-value { font-size:25px; }
+      .topbar-pills { justify-content:flex-start; }
       .pill { white-space:normal; }
+    }
+    @media (max-width: 460px) {
+      .cockpit-strip { grid-template-columns:1fr; }
     }
     @media (min-width: 761px) and (max-width: 1020px) {
       .cockpit-strip { grid-template-columns:repeat(2, minmax(0, 1fr)); }
@@ -248,6 +317,14 @@
   </style>
 </head>
 <body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <linearGradient id="sparkStroke" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#2dd4bf" />
+        <stop offset="100%" stop-color="#38bdf8" />
+      </linearGradient>
+    </defs>
+  </svg>
   <main class="shell">
     {% set evidence_target = 30 %}
     {% set forward_samples = shadow.forward_sample_size or 0 %}
@@ -260,64 +337,101 @@
     {% endfor %}
     {% set freshness_pct = 45 if freshness.stale else 100 %}
     {% set market_pct = 100 if market_info.market_clock.market_state == 'open' else (25 if market_info.market_clock.market_state == 'weekend' else 55) %}
+
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">🛡️</div>
+        <div class="brand-text">
+          <div class="name">Goblin Market Lab</div>
+          <div class="sub">ETF research cockpit · watch-only</div>
+        </div>
+      </div>
+      <div class="topbar-pills">
+        <span class="pill accent">paper only</span>
+        <span class="pill safe"><span class="tick">●</span> order lock: on</span>
+        <span class="pill muted">{% if shadow.historical_bootstrap %}historical replay ready{% else %}replay not started{% endif %}</span>
+      </div>
+    </header>
+
     <section class="hero">
       <div class="panel">
-        <div class="eyebrow">Market research cockpit</div>
-        <h1>Goblin Market Lab</h1>
-        <p class="lead">{{ summary.outcome.headline }}. {{ summary.outcome.measurement }}.</p>
-        <div class="hero-row">
-          <span class="pill safe">paper-only</span>
-          <span class="pill safe">can_place_orders = {{ safety.can_place_orders|string|lower }}</span>
-          <span class="pill muted">{{ summary.outcome.historical }}</span>
-          <span class="pill warn">{{ summary.outcome.forward }}</span>
+        <div class="hero-top">
+          <div style="min-width:0">
+            <div class="eyebrow">Market research cockpit</div>
+            <h1>{{ summary.outcome.headline }}.</h1>
+            <p class="lead">We&rsquo;re measuring ideas, not trusting them. Every rule is scored against buy-and-hold, and a human stays in the loop.</p>
+          </div>
+          <div class="hero-ring {% if forward_samples == 0 %}warn{% endif %}" style="--ring: {{ forward_pct }}%" data-forward-evidence-ring aria-hidden="true">
+            <div class="ring-core">
+              <div class="pct">{{ forward_pct|int }}%</div>
+              <div class="cap">forward<br>evidence</div>
+            </div>
+          </div>
         </div>
+
+        <div class="hero-row">
+          <span class="pill safe"><span class="tick">●</span> can_place_orders = {{ safety.can_place_orders|string|lower }}</span>
+          <span class="pill muted">{{ summary.outcome.historical }}</span>
+          <span class="pill accent">{{ summary.outcome.measurement }}</span>
+        </div>
+
+        <div class="notice {% if forward_samples > 0 %}safe{% endif %}">
+          <span class="dot"></span>
+          {% if forward_samples == 0 %}
+            {{ summary.outcome.forward }} — waiting for the next completed bar.
+          {% else %}
+            {{ summary.outcome.forward }} — {{ forward_samples }} of {{ evidence_target }} samples gathered.
+          {% endif %}
+        </div>
+
         <div class="action-row" data-safe-actions>
-          <a class="action" href="/api/status">View API Status</a>
-          <a class="action" href="/health">Health Check</a>
-          <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy Refresh Command</button>
-          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking --mode forward">Copy Shadow Command</button>
-          <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway Setup</button>
-          <button class="action primary" type="button" data-admin-refresh>Refresh Data + Shadow</button>
+          <a class="action" href="/api/status">API status</a>
+          <a class="action" href="/health">Health check</a>
+          <button class="action" type="button" data-copy="python -m tools.refresh_market_data --symbols SPY GLD --start 2000-01-01">Copy refresh command</button>
+          <button class="action" type="button" data-copy="python -m tools.run_shadow_tracking --mode forward">Copy shadow command</button>
+          <button class="action" type="button" data-copy="SHADOW_STATE_PATH=/mnt/data/shadow_state.json&#10;REAL_DATA_DIR=/mnt/data/real">Copy Railway setup</button>
+          <button class="action primary" type="button" data-admin-refresh>Refresh data + shadow</button>
         </div>
         <div class="action-status" data-admin-refresh-status></div>
+
         <div class="cockpit-strip" data-cockpit-gauges>
           <article class="gauge-card" data-safety-lock-gauge>
             <div class="gauge-top">
               <div>
-                <div class="gauge-label">Safety Lock</div>
+                <div class="gauge-label">Safety lock</div>
                 <div class="gauge-value">Locked</div>
               </div>
-              <div class="gauge-ring" aria-hidden="true">100%</div>
+              <div class="gauge-ring good" aria-hidden="true">100%</div>
             </div>
-            <div class="gauge-note">can_place_orders = {{ safety.can_place_orders|string|lower }}. No broker/order/execution code.</div>
+            <div class="gauge-note">can_place_orders = {{ safety.can_place_orders|string|lower }}. No broker, order or execution code.</div>
           </article>
           <article class="gauge-card" data-forward-evidence-gauge data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
             <div class="gauge-top">
               <div>
-                <div class="gauge-label">Forward Evidence</div>
+                <div class="gauge-label">Forward evidence</div>
                 <div class="gauge-value">{{ forward_samples }} / {{ evidence_target }}</div>
               </div>
               <div class="gauge-ring {% if forward_samples == 0 %}warn{% endif %}" style="--ring: {{ forward_pct }}%" aria-hidden="true">{{ forward_pct|int }}%</div>
             </div>
             <div class="meter"><span class="meter-fill {% if forward_samples == 0 %}warn{% endif %}" style="width: {{ forward_pct }}%"></span></div>
-            <div class="gauge-note">Forward only: {% if forward_samples == 0 %}initialized - waiting{% else %}collecting observations{% endif %}.</div>
+            <div class="gauge-note">Forward only: {% if forward_samples == 0 %}initialized, waiting{% else %}collecting observations{% endif %}.</div>
           </article>
           <article class="gauge-card" data-data-freshness-gauge>
             <div class="gauge-top">
               <div>
-                <div class="gauge-label">Data Freshness</div>
+                <div class="gauge-label">Data freshness</div>
                 <div class="gauge-value">{% if freshness.stale %}Review{% else %}Fresh{% endif %}</div>
               </div>
-              <div class="gauge-ring {% if freshness.stale %}warn{% endif %}" style="--ring: {{ freshness_pct }}%" aria-hidden="true">{{ freshness_pct }}%</div>
+              <div class="gauge-ring {% if freshness.stale %}warn{% else %}good{% endif %}" style="--ring: {{ freshness_pct }}%" aria-hidden="true">{{ freshness_pct }}%</div>
             </div>
-            <div class="meter"><span class="meter-fill {% if freshness.stale %}warn{% endif %}" style="width: {{ freshness_pct }}%"></span></div>
-            <div class="gauge-note">{% for item in market_info.instruments %}{{ item.symbol }} {{ item.latest_bar_date or "unknown" }}{% if not loop.last %} / {% endif %}{% endfor %}</div>
+            <div class="meter"><span class="meter-fill {% if freshness.stale %}warn{% else %}good{% endif %}" style="width: {{ freshness_pct }}%"></span></div>
+            <div class="gauge-note">{% for item in market_info.instruments %}{{ item.symbol }} {{ item.latest_bar_date or "unknown" }}{% if not loop.last %} · {% endif %}{% endfor %}</div>
           </article>
           <article class="gauge-card" data-market-session-gauge>
             <div class="gauge-top">
               <div>
-                <div class="gauge-label">Market State</div>
-                <div class="gauge-value">{{ market_info.market_clock.market_state }}</div>
+                <div class="gauge-label">Market state</div>
+                <div class="gauge-value" style="text-transform:capitalize">{{ market_info.market_clock.market_state }}</div>
               </div>
               <div class="gauge-ring {% if market_info.market_clock.market_state != 'open' %}warn{% endif %}" style="--ring: {{ market_pct }}%" aria-hidden="true">{{ market_pct }}%</div>
             </div>
@@ -325,71 +439,82 @@
             <div class="gauge-note">Regular-hours estimate; holidays not modeled.</div>
           </article>
         </div>
+
         <div class="next">{{ summary.next_step }}</div>
       </div>
 
       <div class="panel">
-        <div class="eyebrow">Safety status</div>
-        <div class="chip-row">
+        <h2>Safety status</h2>
+        <div class="safety-list">
           {% for item in summary.safety %}
-            <span class="pill safe">{{ item }}</span>
+          <div class="safety-item">
+            <span class="check" aria-hidden="true">✓</span>
+            <span>{{ item }}</span>
+          </div>
           {% endfor %}
         </div>
-        <p class="muted" style="margin-top:8px">{{ safety.verdict }}</p>
+        <p class="muted" style="margin-top:12px">Paper-only by design. The guarantees above are structural, not toggles. {{ safety.verdict }}</p>
       </div>
     </section>
 
     <section class="section">
-      <h2>ETF Market Info</h2>
+      <div class="section-head">
+        <h2>ETF Market Info</h2>
+        <span class="pill muted">source: yfinance CSV</span>
+      </div>
       <div class="card">
         <div class="chip-row">
-          <span class="pill {% if market_info.market_clock.market_state == 'open' %}safe{% else %}muted{% endif %}">market: {{ market_info.market_clock.market_state }}</span>
+          <span class="pill {% if market_info.market_clock.market_state == 'open' %}safe{% else %}muted{% endif %}" style="text-transform:capitalize">market: {{ market_info.market_clock.market_state }}</span>
           <span class="pill muted">session: {{ market_info.market_clock.core_session }}</span>
           <span class="pill warn">holidays: {{ market_info.market_clock.holiday_calendar_accuracy }}</span>
-          <span class="pill safe">watch-only</span>
+          <span class="pill accent">watch-only</span>
           <span class="pill safe">trade impact: {{ market_info.trade_impact }}</span>
         </div>
         <div class="keyline">
           <div><span>Next open estimate</span><strong>{{ market_info.market_clock.next_open_est }}</strong></div>
           <div><span>Next close estimate</span><strong>{{ market_info.market_clock.next_close_est }}</strong></div>
         </div>
-        <p class="muted" style="margin-top:8px">{{ market_info.market_clock.clock_note }}</p>
+        <p class="muted" style="margin-top:9px">{{ market_info.market_clock.clock_note }}</p>
         <div class="market-row">
           {% for item in market_info.instruments %}
           <div class="market-card">
-            <div class="headline">{{ item.symbol }} - {{ item.display_name }}</div>
+            <div class="mc-head">
+              <div class="mc-badge {{ item.symbol|lower }}" aria-hidden="true">{{ item.symbol }}</div>
+              <div class="mc-name">
+                <div class="sym">{{ item.symbol }}</div>
+                <div class="full">{{ item.display_name }}</div>
+              </div>
+            </div>
             <div class="price-row">
               <div>
                 <div class="muted">Latest close</div>
                 <div class="price-value">{{ item.latest_close|round(2) if item.latest_close is not none else "unknown" }}</div>
               </div>
               <span class="change-pill {% if item.day_change_pct is not none and item.day_change_pct < 0 %}warn{% endif %}">
-                {% if item.day_change_pct is not none %}{{ (item.day_change_pct * 100)|round(2) }}%{% else %}unknown{% endif %}
+                {% if item.day_change_pct is not none %}{{ '+' if item.day_change_pct >= 0 else '' }}{{ (item.day_change_pct * 100)|round(2) }}%{% else %}unknown{% endif %}
               </span>
             </div>
+            {% if item.sparkline_points %}
+            <div class="sparkline-wrap">
+              <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
+                <polyline points="{{ item.sparkline_points }}"></polyline>
+              </svg>
+            </div>
+            {% endif %}
+            <div class="keyline">
+              <div><span>Latest bar</span><strong>{{ item.latest_bar_date or "unknown" }}</strong></div>
+              <div><span>Bars available</span><strong>{{ item.bars_available }}</strong></div>
+              <div><span>Data source</span><strong>{{ item.source }} CSV</strong></div>
+              <div><span>Adjustment</span><strong>{% if item.price_adjustment == 'unknown' %}not verified{% else %}{{ item.price_adjustment }}{% endif %}</strong></div>
+            </div>
             <div class="chip-row">
-              <span class="pill muted">source: {{ item.source }} CSV</span>
-              <span class="pill {% if item.price_adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ item.price_adjustment }}</span>
               {% if item.data_is_stale %}
                 <span class="pill warn">stale data</span>
               {% else %}
                 <span class="pill safe">fresh data</span>
               {% endif %}
-              <span class="pill safe">{{ item.status }}</span>
+              <span class="pill muted">{{ item.trade_impact }} trade impact</span>
             </div>
-            <div class="keyline">
-              <div><span>Day change</span><strong>{% if item.day_change is not none %}{{ item.day_change|round(2) }}{% else %}unknown{% endif %}</strong></div>
-              <div><span>Status</span><strong>{{ item.trade_impact }} trade impact</strong></div>
-              <div><span>Latest bar</span><strong>{{ item.latest_bar_date or "unknown" }}</strong></div>
-              <div><span>Bars available</span><strong>{{ item.bars_available }}</strong></div>
-            </div>
-            {% if item.sparkline_points %}
-            <div class="sparkline-wrap">
-            <svg class="sparkline" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true">
-              <polyline points="{{ item.sparkline_points }}"></polyline>
-            </svg>
-            </div>
-            {% endif %}
           </div>
           {% endfor %}
         </div>
@@ -397,14 +522,14 @@
     </section>
 
     <section class="section">
-      <h2>Watching</h2>
+      <div class="section-head"><h2>Watching</h2></div>
       <div class="grid">
         {% for item in summary.instruments %}
         <div class="card">
-          <div class="headline">{{ item.symbol }} - {{ item.label }}</div>
+          <div class="headline">{{ item.symbol }} · {{ item.label }}</div>
           <div class="chip-row">
-            <span class="pill">source: {{ item.source }} CSV</span>
-            <span class="pill {% if item.adjustment == 'unknown' %}warn{% endif %}">adjustment: {{ item.adjustment }}</span>
+            <span class="pill muted">source: {{ item.source }} CSV</span>
+            <span class="pill {% if item.adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ item.adjustment }}</span>
             {% if item.data_is_stale %}
               <span class="pill warn">stale data</span>
             {% else %}
@@ -421,22 +546,26 @@
     </section>
 
     <section class="section">
-      <h2>Outcome</h2>
+      <div class="section-head"><h2>Outcome</h2></div>
       <div class="grid">
         <div class="card">
-          <div class="headline">No proven edge yet</div>
-          <p class="score-text">Strategies are being measured, not trusted. Scorecards compare each rule with buy-and-hold and keep human approval required.</p>
+          <div class="headline">Where we stand</div>
+          <p class="score-text">No proven edge yet. Strategies are being measured, not trusted — each rule is compared with buy-and-hold and human approval stays required before anything advances.</p>
+          <div class="chip-row" style="margin-top:12px">
+            <span class="pill accent">measuring, not trusting</span>
+            <span class="pill safe">human-in-the-loop</span>
+          </div>
         </div>
         <div class="card">
-          <div class="headline">Shadow evidence</div>
+          <h2 style="margin-bottom:10px">Shadow evidence</h2>
           <div class="shadow-split">
             <div class="shadow-box">
-              <div class="muted">Historical bootstrap</div>
+              <div class="tag">Historical bootstrap</div>
               <strong>{{ shadow.historical_bootstrap }}</strong>
               <div class="muted">sample size: {{ shadow.historical_sample_size }}</div>
             </div>
-            <div class="shadow-box">
-              <div class="muted">Forward observed</div>
+            <div class="shadow-box accent">
+              <div class="tag">Forward observed</div>
               <strong>{{ shadow.forward_observed }}</strong>
               <div class="muted">sample size: {{ shadow.forward_sample_size }}</div>
             </div>
@@ -452,7 +581,7 @@
               {% if not shadow.forward_observation_started %}
                 Forward: not started
               {% elif shadow.forward_observed == 0 %}
-                Forward: initialized - waiting
+                Forward: initialized, waiting
               {% else %}
                 Forward: collecting
               {% endif %}
@@ -463,27 +592,30 @@
             <div><span>Observed through</span><strong>{{ shadow.forward_observed_through or "not started" }}</strong></div>
             <div><span>Last forward records</span><strong>{{ shadow.new_forward_records_last_run }}</strong></div>
           </div>
-          <p class="muted">{{ shadow.verdict }}</p>
-          <p class="muted" style="margin-top:8px">No trades placed. No paper portfolio impact.</p>
+          <p class="muted" style="margin-top:9px">{{ shadow.verdict }}</p>
+          <p class="muted" style="margin-top:6px">No trades placed. No paper portfolio impact.</p>
         </div>
       </div>
     </section>
 
     <section class="section">
-      <h2>Scorecards</h2>
+      <div class="section-head">
+        <h2>Scorecards</h2>
+        <span class="pill muted">watch-only research</span>
+      </div>
       <div class="grid">
         {% for c in scorecards %}
         <article class="card">
-          <div class="headline">{{ c.instrument }} / {{ c.strategy }}</div>
+          <div class="headline">{{ c.instrument }} · {{ c.strategy }}</div>
           <div class="subhead">{{ c.headline }}</div>
           <div class="chip-row">
             {% if c.synthetic %}
-              <span class="pill warn">synthetic - not evidence</span>
+              <span class="pill warn">synthetic — not evidence</span>
             {% else %}
-              <span class="pill">source: {{ c.data_source }}</span>
+              <span class="pill muted">source: {{ c.data_source }}</span>
             {% endif %}
-            <span class="pill {% if c.price_adjustment == 'unknown' %}warn{% endif %}">adjustment: {{ c.price_adjustment }}</span>
-            <span class="pill {% if c.vs_benchmark == 'beats' %}safe{% elif c.vs_benchmark == 'lags' %}warn{% endif %}">vs benchmark: {{ c.vs_benchmark }}</span>
+            <span class="pill {% if c.price_adjustment == 'unknown' %}warn{% else %}muted{% endif %}">adjustment: {{ c.price_adjustment }}</span>
+            <span class="pill {% if c.vs_benchmark == 'beats' %}safe{% elif c.vs_benchmark == 'lags' %}warn{% else %}muted{% endif %}">vs benchmark: {{ c.vs_benchmark }}</span>
             {% if c.data_is_stale %}<span class="pill warn">stale data</span>{% endif %}
           </div>
           <div class="keyline">
@@ -504,8 +636,8 @@
             <span class="pill muted">win rate: {{ c.win_rate }}</span>
             <span class="pill muted">expectancy/trade: {{ c.expectancy_per_trade }}</span>
           </div>
-          {% if c.concentration.flagged %}<div class="flag">{{ c.concentration.note }}</div>{% endif %}
-          <p class="muted" style="margin-top:8px">human approval required: {{ c.required_human_approval }}; pilot-ready: {{ c.ready_for_pilot }}</p>
+          {% if c.concentration.flagged %}<div class="flag">⚠ {{ c.concentration.note }}</div>{% endif %}
+          <p class="muted" style="margin-top:9px">human approval required: {{ c.required_human_approval }} · pilot-ready: {{ c.ready_for_pilot }}</p>
         </article>
         {% else %}
         <div class="card">
@@ -515,6 +647,8 @@
         {% endfor %}
       </div>
     </section>
+
+    <p class="foot">Goblin Market Lab · paper-only research · no live trading, no orders, no leverage.</p>
   </main>
   <script>
     document.querySelectorAll("[data-copy]").forEach((button) => {

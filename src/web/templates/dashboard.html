@@ -501,7 +501,7 @@
     <section class="section">
       <div class="section-head">
         <h2>ETF Market Info</h2>
-        <span class="pill muted">source: yfinance CSV</span>
+        <span class="pill muted">source: persisted vendor CSV</span>
       </div>
       <div class="card">
         <div class="chip-row">
@@ -726,11 +726,18 @@
           const payload = await response.json();
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Refresh failed.");
           refreshStatus.className = "action-status ok";
+          const sourceMessage = Object.entries(payload.source_used || {})
+            .map(([symbol, source]) => `${symbol} ${source}`)
+            .join(", ");
+          const fallbackEntries = Object.entries(payload.fallback_reason || {});
+          const fallbackMessage = fallbackEntries.length
+            ? ` Fallback: ${fallbackEntries.map(([symbol, reason]) => `${symbol} ${(payload.fallback_source_used || {})[symbol] || "unknown"} (${reason})`).join("; ")}.`
+            : "";
           const excludedRows = payload.excluded_vendor_rows || [];
           const excludedMessage = excludedRows.length
-            ? ` Excluded vendor rows: ${excludedRows.map((row) => `${row.symbol} ${row.date} ${row.reason}`).join("; ")}.`
+            ? ` Excluded vendor rows: ${excludedRows.map((row) => `${row.symbol} ${row.date} ${row.reason} [${row.source || "unknown source"}]`).join("; ")}.`
             : "";
-          refreshStatus.textContent = `${payload.forward_message} Latest accepted bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.${excludedMessage}`;
+          refreshStatus.textContent = `${payload.forward_message} Sources: ${sourceMessage || "unknown"}. Latest accepted bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.${fallbackMessage}${excludedMessage}`;
         } catch (error) {
           refreshStatus.className = "action-status error";
           refreshStatus.textContent = error.message;

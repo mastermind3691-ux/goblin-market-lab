@@ -2,5 +2,4 @@ Flask>=3.0.0
 python-dotenv>=1.0.0
 pandas>=2.0.0
 yfinance>=0.2.0
-# Data vendor libraries are added later, inside a single adapter, when you move
-# beyond the offline CSV adapter. Keep this surface small.
+# Tiingo EOD uses the standard-library HTTPS client; no vendor SDK is required.

@@ -193,7 +193,11 @@ def create_app() -> Flask:
             s = safety_state()
             return jsonify({
                 "ok": True,
+                "primary_source": refresh["primary_source"],
                 "symbols_refreshed": refresh["symbols"],
+                "source_used": refresh["source_used"],
+                "fallback_source_used": refresh["fallback_source_used"],
+                "fallback_reason": refresh["fallback_reason"],
                 "output_dir": refresh["output_dir"],
                 "latest_bar_date": refresh["latest_bar_date"],
                 "latest_vendor_row_date": refresh["latest_vendor_row_date"],

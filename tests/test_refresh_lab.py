@@ -25,7 +25,11 @@ class TestRefreshLab(unittest.TestCase):
         with patch.object(refresh_lab_module, "refresh_market_data") as refresh, \
              patch.object(refresh_lab_module, "run_forward_observation") as forward:
             refresh.return_value = {
+                "primary_source": "tiingo",
                 "symbols": ["SPY", "GLD"],
+                "source_used": {"SPY": "tiingo", "GLD": "tiingo"},
+                "fallback_source_used": {"SPY": None, "GLD": None},
+                "fallback_reason": {},
                 "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
                 "latest_vendor_row_date": {
                     "SPY": "2026-06-23", "GLD": "2026-06-23",
@@ -56,6 +60,7 @@ class TestRefreshLab(unittest.TestCase):
             state_path="/mnt/data/shadow_state.json",
         )
         self.assertEqual(summary["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertEqual(summary["source_used"]["SPY"], "tiingo")
         self.assertEqual(summary["latest_vendor_row_date"]["SPY"], "2026-06-23")
         self.assertEqual(len(summary["excluded_vendor_rows"]), 1)
         self.assertEqual(summary["shadow_state_path"], "/mnt/data/shadow_state.json")

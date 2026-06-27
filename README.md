@@ -26,13 +26,17 @@ python -m src.web.app
 # open http://127.0.0.1:5060
 ```
 
+Tiingo EOD is the primary refresh vendor when `TIINGO_API_KEY` is configured;
+yfinance remains the fallback/debug source. Both persist validated bars through
+the existing CSV path so downstream research stays reproducible and offline-readable.
+
 Sample CSV bars for SPY and GLD ship in `data/`, so everything works with no
-network. Replace the `CsvAdapter` with a real vendor adapter later behind the
+network. `CsvAdapter` remains the offline/debug implementation behind the
 same `MarketDataAdapter` interface — nothing downstream changes.
 
 ## What v0.1 includes
 
-- 2 instruments (SPY, GLD), 1 data adapter (offline CSV)
+- 2 instruments (SPY, GLD), Tiingo EOD, and the offline CSV adapter
 - 2 simple strategies (`sma_dip`, `trend_filter`) — hypotheses, not truths
 - a fee-aware backtest engine (no look-ahead)
 - honest expectancy + a scorecard that benchmarks vs buy-and-hold, flags
@@ -91,7 +95,12 @@ The route requires:
 ```bash
 REAL_DATA_DIR=/mnt/data/real
 SHADOW_STATE_PATH=/mnt/data/shadow_state.json
+TIINGO_API_KEY=<set in Railway variables; never commit it>
 ```
+
+Refresh prefers Tiingo's adjusted EOD OHLCV fields and writes truthful
+`source=tiingo`, `adjustment=adjusted` metadata. If the key is missing or Tiingo
+is unavailable, it falls back to yfinance and reports the fallback reason.
 
 It refreshes market CSV/meta files into `REAL_DATA_DIR`, then updates the shadow
 ledger at `SHADOW_STATE_PATH` in forward observation mode. Both paths are
@@ -101,7 +110,7 @@ initializes one and waits for the next completed bar. It does not place trades,
 create orders, run on a schedule, poll the dashboard, or mutate the paper
 portfolio.
 
-The default yfinance end date is close-aware and exclusive: before 16:00 ET it
+The yfinance fallback end date is close-aware and exclusive: before 16:00 ET it
 stops before the current session; after 16:00 ET it includes that day's bar.
 Weekend refreshes include Friday's completed bar. US market holidays and early
 closes are not modeled.
@@ -129,6 +138,7 @@ Dashboard service:
 - mount the volume at `/mnt/data`
 - set `REAL_DATA_DIR=/mnt/data/real`
 - set `SHADOW_STATE_PATH=/mnt/data/shadow_state.json`
+- set `TIINGO_API_KEY` to the secret Tiingo API token
 - set `FORCE_PAPER_ONLY=true`
 
 Cron service:

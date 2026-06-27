@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from src.data.base import DataMeta
 from src.paper.persistence import atomic_write_json, load_json
 from src.paper.shadow_tracker import ShadowTracker
 from tools.run_shadow_tracking import run_forward_observation
@@ -42,6 +43,25 @@ def _write_bars(directory: str, symbol: str, dates: list[date]) -> None:
         }, fh)
 
 
+class FixtureTiingoAdapter:
+    def __init__(self, bars):
+        self.bars = bars
+
+    def fetch(self, symbol, start, end):
+        return {
+            "bars": self.bars,
+            "meta": DataMeta(
+                source="tiingo", synthetic=False, adjustment="adjusted",
+            ),
+            "latest_vendor_row_date": self.bars[-1]["ts"],
+            "excluded_vendor_rows": [],
+        }
+
+    def diagnostics(self, symbol):
+        return {}
+
+
+@patch.dict(os.environ, {"TIINGO_API_KEY": ""})
 class TestForwardRefreshWiring(unittest.TestCase):
     @patch("tools.refresh_market_data.fetch_bars")
     def test_incomplete_vendor_row_does_not_create_forward_record(self, fetch):
@@ -143,6 +163,62 @@ class TestForwardRefreshWiring(unittest.TestCase):
             )
             self.assertEqual(rerun["new_forward_records_last_run"], 0)
             self.assertEqual(rerun["forward_observed"], 4)
+
+    def test_tiingo_new_accepted_bar_creates_forward_records(self):
+        dates = []
+        current = date(2026, 1, 2)
+        while current <= date(2026, 6, 26):
+            if current.weekday() < 5:
+                dates.append(current)
+            current += timedelta(days=1)
+        tiingo_bars = [
+            {
+                "ts": bar_date.isoformat(),
+                "open": 100.0 + index,
+                "high": 101.0 + index,
+                "low": 99.0 + index,
+                "close": 100.0 + index,
+                "volume": 1000.0,
+            }
+            for index, bar_date in enumerate(dates)
+        ]
+        after_close = datetime(
+            2026, 6, 26, 17, 0,
+            tzinfo=ZoneInfo("America/New_York"),
+        )
+
+        with tempfile.TemporaryDirectory() as real_dir:
+            state_path = os.path.join(real_dir, "shadow_state.json")
+            for symbol in ("SPY", "GLD"):
+                _write_bars(real_dir, symbol, dates[:-1])
+            run_forward_observation(
+                real_data_dir=real_dir, state_path=state_path, now=after_close,
+            )
+
+            refresh = refresh_market_data(
+                ["SPY", "GLD"], "2000-01-01", "2026-06-27",
+                output_dir=real_dir, write_raw=False,
+                tiingo_adapter=FixtureTiingoAdapter(tiingo_bars),
+            )
+            forward = run_forward_observation(
+                real_data_dir=real_dir, state_path=state_path, now=after_close,
+            )
+            persisted = ShadowTracker.from_dict(load_json(state_path))
+
+        self.assertEqual(refresh["source_used"], {
+            "SPY": "tiingo", "GLD": "tiingo",
+        })
+        self.assertEqual(refresh["latest_bar_date"], {
+            "SPY": "2026-06-26", "GLD": "2026-06-26",
+        })
+        self.assertEqual(forward["new_forward_records_last_run"], 4)
+        new_records = [
+            record for record in persisted.records
+            if record.signal_date == "2026-06-26"
+        ]
+        self.assertEqual(len(new_records), 4)
+        self.assertTrue(all(record.data_source == "tiingo" for record in new_records))
+        self.assertTrue(all(record.adjustment == "adjusted" for record in new_records))
 
 
 if __name__ == "__main__":

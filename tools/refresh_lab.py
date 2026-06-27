@@ -38,7 +38,11 @@ def refresh_lab(symbols: list[str], start: str) -> dict:
     )
 
     return {
+        "primary_source": refresh["primary_source"],
         "symbols_refreshed": refresh["symbols"],
+        "source_used": refresh["source_used"],
+        "fallback_source_used": refresh["fallback_source_used"],
+        "fallback_reason": refresh["fallback_reason"],
         "latest_bar_date": refresh["latest_bar_date"],
         "latest_vendor_row_date": refresh["latest_vendor_row_date"],
         "excluded_vendor_rows": refresh["excluded_vendor_rows"],
@@ -54,7 +58,12 @@ def refresh_lab(symbols: list[str], start: str) -> dict:
 
 def print_summary(summary: dict) -> None:
     print("Refresh Lab complete.")
+    print(f"  primary source: {summary['primary_source']}")
     print(f"  symbols refreshed: {', '.join(summary['symbols_refreshed'])}")
+    print(f"  source used: {summary['source_used']}")
+    if summary["fallback_reason"]:
+        print(f"  fallback source used: {summary['fallback_source_used']}")
+        print(f"  fallback reason: {summary['fallback_reason']}")
     print(f"  latest accepted bar dates: {summary['latest_bar_date']}")
     print(f"  latest vendor row dates: {summary['latest_vendor_row_date']}")
     for excluded in summary["excluded_vendor_rows"]:

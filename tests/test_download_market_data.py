@@ -1,11 +1,14 @@
 import unittest
 import tempfile
+import json
+import os
 from datetime import datetime
 from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 
+from src.data.base import DataMeta
 from tools.download_market_data import dataframe_to_csv_result, dataframe_to_csv_text
 from tools.refresh_market_data import refresh_market_data
 
@@ -113,6 +116,7 @@ class TestCsvValidatorAcceptsOutput(unittest.TestCase):
         self.assertEqual(result.date_range, ("2023-01-02", "2023-01-05"))
 
 
+@patch.dict(os.environ, {"TIINGO_API_KEY": ""})
 class TestRefreshMarketData(unittest.TestCase):
     @patch("tools.refresh_market_data.fetch_bars")
     def test_write_raw_false_skips_raw_copy(self, mock_fetch):
@@ -125,6 +129,9 @@ class TestRefreshMarketData(unittest.TestCase):
 
         self.assertEqual(result["symbols"], ["SPY"])
         self.assertIsNone(result["refreshed"][0]["raw_path"])
+        self.assertEqual(result["source_used"], {"SPY": "yfinance"})
+        self.assertEqual(result["fallback_source_used"], {"SPY": "yfinance"})
+        self.assertIn("TIINGO_API_KEY", result["fallback_reason"]["SPY"])
 
     @patch("tools.refresh_market_data.fetch_bars")
     def test_default_end_includes_bar_after_market_close(self, mock_fetch):
@@ -157,4 +164,92 @@ class TestRefreshMarketData(unittest.TestCase):
             "symbol": "SPY",
             "date": "2026-06-26",
             "reason": "excluded because Close/Adj Close was NaN",
+            "source": "yfinance",
         }])
+
+
+class StubTiingoAdapter:
+    def __init__(self, result=None, error=None):
+        self.result = result
+        self.error = error
+
+    def fetch(self, symbol, start, end):
+        if self.error:
+            raise self.error
+        return self.result
+
+    def diagnostics(self, symbol):
+        return {}
+
+
+class TestRefreshProviderSelection(unittest.TestCase):
+    @patch.dict(os.environ, {"TIINGO_API_KEY": "fixture-env-key"})
+    @patch("tools.refresh_market_data.TiingoEodAdapter")
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_environment_key_selects_tiingo(self, yfinance_fetch, adapter_class):
+        adapter_class.return_value = StubTiingoAdapter(result={
+            "bars": [{
+                "ts": "2026-06-26", "open": 735.0, "high": 737.0,
+                "low": 733.0, "close": 736.0, "volume": 1000.0,
+            }],
+            "meta": DataMeta(source="tiingo", synthetic=False, adjustment="adjusted"),
+            "latest_vendor_row_date": "2026-06-26",
+            "excluded_vendor_rows": [],
+        })
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = refresh_market_data(
+                ["SPY"], "2000-01-01", "2026-06-27",
+                output_dir=directory, write_raw=False,
+            )
+
+        adapter_class.assert_called_once_with(api_key="fixture-env-key", now=None)
+        yfinance_fetch.assert_not_called()
+        self.assertEqual(result["source_used"], {"SPY": "tiingo"})
+
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_tiingo_is_primary_and_can_advance_latest_bar(self, yfinance_fetch):
+        yfinance_fetch.return_value = _mock_incomplete_latest_dataframe()
+        tiingo = StubTiingoAdapter(result={
+            "bars": [{
+                "ts": "2026-06-26", "open": 735.0, "high": 737.0,
+                "low": 733.0, "close": 736.0, "volume": 1000.0,
+            }],
+            "meta": DataMeta(source="tiingo", synthetic=False, adjustment="adjusted"),
+            "latest_vendor_row_date": "2026-06-26",
+            "excluded_vendor_rows": [],
+        })
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = refresh_market_data(
+                ["SPY"], "2000-01-01", "2026-06-27",
+                output_dir=directory, write_raw=False,
+                tiingo_adapter=tiingo,
+            )
+            with open(os.path.join(directory, "SPY.meta.json"), encoding="utf-8") as fh:
+                meta = json.load(fh)
+
+        yfinance_fetch.assert_not_called()
+        self.assertEqual(result["source_used"], {"SPY": "tiingo"})
+        self.assertEqual(result["fallback_source_used"], {"SPY": None})
+        self.assertEqual(result["latest_bar_date"], {"SPY": "2026-06-26"})
+        self.assertEqual(meta, {
+            "source": "tiingo", "synthetic": False, "adjustment": "adjusted",
+        })
+
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_tiingo_failure_uses_yfinance_fallback(self, yfinance_fetch):
+        yfinance_fetch.return_value = _mock_dataframe()
+        tiingo = StubTiingoAdapter(error=RuntimeError("fixture outage"))
+
+        with tempfile.TemporaryDirectory() as directory:
+            result = refresh_market_data(
+                ["GLD"], "2000-01-01", "2026-06-27",
+                output_dir=directory, write_raw=False,
+                tiingo_adapter=tiingo,
+            )
+
+        yfinance_fetch.assert_called_once()
+        self.assertEqual(result["source_used"], {"GLD": "yfinance"})
+        self.assertEqual(result["fallback_source_used"], {"GLD": "yfinance"})
+        self.assertIn("RuntimeError", result["fallback_reason"]["GLD"])

@@ -264,7 +264,11 @@ class TestAdminRefresh(unittest.TestCase):
         with patch.object(web_app, "refresh_market_data") as refresh, \
              patch.object(web_app, "run_forward_observation") as shadow:
             refresh.return_value = {
+                "primary_source": "tiingo",
                 "symbols": ["SPY", "GLD"],
+                "source_used": {"SPY": "tiingo", "GLD": "tiingo"},
+                "fallback_source_used": {"SPY": None, "GLD": None},
+                "fallback_reason": {},
                 "output_dir": "/mnt/data/real",
                 "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
                 "latest_vendor_row_date": {
@@ -296,6 +300,8 @@ class TestAdminRefresh(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["can_place_orders"])
         self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertEqual(payload["primary_source"], "tiingo")
+        self.assertEqual(payload["source_used"]["SPY"], "tiingo")
         self.assertEqual(payload["latest_bar_date"]["SPY"], "2026-06-22")
         self.assertEqual(payload["latest_vendor_row_date"]["SPY"], "2026-06-23")
         self.assertEqual(payload["excluded_vendor_rows"][0]["symbol"], "SPY")

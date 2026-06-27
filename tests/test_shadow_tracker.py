@@ -191,6 +191,22 @@ class TestForwardObservationMode(unittest.TestCase):
         self.assertEqual(tracker.records[0].signal_date, "2024-01-04")
         self.assertEqual(tracker.records[0].origin, ORIGIN_FORWARD)
 
+    def test_forward_run_records_hold_on_new_bar(self):
+        tracker = ShadowTracker()
+        bars = _bars([100, 101, 102])
+        tracker.initialize_forward_observation({"SPY": bars[-1]["ts"]})
+        newer = _bars([100, 101, 102, 103])
+
+        added = tracker.observe_forward_bars(
+            DateBuyStrategy([]), "SPY", newer,
+            tracker.forward_observed_through["SPY"], warmup=0,
+        )
+
+        self.assertEqual(added, 1)
+        self.assertEqual(tracker.records[0].signal_date, "2024-01-04")
+        self.assertEqual(tracker.records[0].signal_type, "HOLD")
+        self.assertEqual(tracker.records[0].origin, ORIGIN_FORWARD)
+
     def test_historical_records_remain_historical_after_forward_run(self):
         tracker = ShadowTracker()
         tracker.observe("date_buy", "SPY", "2024-01-02", "BUY", 101,

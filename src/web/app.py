@@ -28,11 +28,9 @@ from ..paper.shadow_tracker import ShadowTracker
 from ..safety.gate import safety_state
 from ..scorecard.scorecard import build_scorecard
 from tools.refresh_market_data import refresh_market_data
-from tools.run_shadow_tracking import run_forward_observation
+from tools.run_shadow_tracking import run_forward_observation, shadow_state_path
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
-SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
-                         os.path.join(os.path.dirname(__file__), "..", "..", "shadow_state.json"))
 REFRESH_ACTION_HEADER = "refresh-market-data"
 REFRESH_SYMBOLS = ["SPY", "GLD"]
 REFRESH_START = "2000-01-01"
@@ -64,7 +62,7 @@ def compute_scorecards() -> list[dict]:
 
 
 def shadow_summary() -> dict:
-    saved = load_json(SHADOW_PATH)
+    saved = load_json(shadow_state_path())
     if not saved:
         return ShadowTracker().summary()
     return ShadowTracker.from_dict(saved).summary()
@@ -169,6 +167,13 @@ def create_app() -> Flask:
                 "error": "REAL_DATA_DIR is required for dashboard refresh.",
                 "setup": "Set REAL_DATA_DIR=/mnt/data/real and mount a Railway volume at /mnt/data.",
             }), 400
+        state_path = (os.getenv("SHADOW_STATE_PATH") or "").strip()
+        if not state_path:
+            return jsonify({
+                "ok": False,
+                "error": "SHADOW_STATE_PATH is required for dashboard refresh.",
+                "setup": "Set SHADOW_STATE_PATH=/mnt/data/shadow_state.json on the mounted Railway volume.",
+            }), 400
         if not _refresh_lock.acquire(blocking=False):
             return jsonify({
                 "ok": False,
@@ -181,13 +186,17 @@ def create_app() -> Flask:
                 output_dir=real_data_dir,
                 write_raw=False,
             )
-            shadow = run_forward_observation()
+            shadow = run_forward_observation(
+                real_data_dir=real_data_dir,
+                state_path=state_path,
+            )
             s = safety_state()
             return jsonify({
                 "ok": True,
                 "symbols_refreshed": refresh["symbols"],
                 "output_dir": refresh["output_dir"],
                 "latest_bar_date": refresh["latest_bar_date"],
+                "shadow_state_path": shadow["path"],
                 "shadow_total": shadow["total"],
                 "historical_bootstrap": shadow["historical_bootstrap"],
                 "forward_observed": shadow["forward_observed"],

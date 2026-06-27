@@ -11,8 +11,9 @@ from __future__ import annotations
 
 import argparse
 import os
-from datetime import date
+from datetime import datetime
 
+from src.data.completed_bars import yfinance_exclusive_end
 from tools.download_market_data import dataframe_to_csv_text, fetch_bars
 from tools.import_csv import import_csv_text, real_data_dir
 
@@ -20,8 +21,9 @@ from tools.import_csv import import_csv_text, real_data_dir
 def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
                         adjustment: str = "unknown",
                         output_dir: str | None = None,
-                        write_raw: bool = True) -> dict:
-    end = end or date.today().isoformat()
+                        write_raw: bool = True,
+                        now: datetime | None = None) -> dict:
+    end = end or yfinance_exclusive_end(now)
     out_dir = output_dir or real_data_dir()
     root = os.path.join(os.path.dirname(__file__), "..")
     raw_dir = os.path.join(root, "data", "raw", "yfinance")
@@ -50,6 +52,7 @@ def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
     return {
         "symbols": [r["symbol"] for r in refreshed],
         "output_dir": out_dir,
+        "download_end_exclusive": end,
         "latest_bar_date": {r["symbol"]: r["latest_bar_date"] for r in refreshed},
         "refreshed": refreshed,
     }
@@ -61,7 +64,11 @@ def main() -> None:
     )
     parser.add_argument("--symbols", nargs="+", required=True, help="Symbols to refresh")
     parser.add_argument("--start", default="2000-01-01", help="Start date (default: 2000-01-01)")
-    parser.add_argument("--end", default=date.today().isoformat(), help="End date (default: today)")
+    parser.add_argument(
+        "--end",
+        default=None,
+        help="Exclusive end date (default: latest completed regular-session bar)",
+    )
     parser.add_argument("--adjustment", default="unknown",
                         choices=["adjusted", "unadjusted", "unknown"],
                         help="Adjustment label (default: unknown)")

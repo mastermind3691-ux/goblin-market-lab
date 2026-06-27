@@ -14,7 +14,9 @@ from __future__ import annotations
 
 import argparse
 import os
+from datetime import datetime
 
+from src.data.completed_bars import completed_daily_bars
 from src.data.csv_adapter import CsvAdapter
 from src.instruments.registry import INSTRUMENTS
 from src.paper.persistence import atomic_write_json, load_json
@@ -23,9 +25,8 @@ from src.safety.gate import can_place_orders
 from src.strategies.sma_dip import SmaDip
 from src.strategies.trend_filter import TrendFilter
 
-DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "data"))
-SHADOW_PATH = os.getenv("SHADOW_STATE_PATH",
-                         os.path.join(os.path.dirname(__file__), "..", "shadow_state.json"))
+DEFAULT_DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+DEFAULT_SHADOW_PATH = os.path.join(os.path.dirname(__file__), "..", "shadow_state.json")
 
 MODE_HISTORICAL = "historical-bootstrap"
 MODE_FORWARD = "forward"
@@ -35,16 +36,21 @@ def _strategies():
     return [SmaDip(), TrendFilter()]
 
 
-def _load_tracker() -> ShadowTracker:
-    saved = load_json(SHADOW_PATH)
+def shadow_state_path() -> str:
+    return (os.getenv("SHADOW_STATE_PATH") or DEFAULT_SHADOW_PATH).strip()
+
+
+def _load_tracker(path: str) -> ShadowTracker:
+    saved = load_json(path)
     return ShadowTracker.from_dict(saved) if saved else ShadowTracker()
 
 
-def _available_bars(adapter: CsvAdapter) -> dict[str, list[dict]]:
+def _available_bars(adapter: CsvAdapter,
+                    now: datetime | None = None) -> dict[str, list[dict]]:
     data = {}
     for symbol in INSTRUMENTS:
         try:
-            bars = adapter.bars(symbol, limit=999_999)
+            bars = completed_daily_bars(adapter.bars(symbol, limit=999_999), now)
         except FileNotFoundError:
             print(f"  {symbol}: no data, skipping")
             continue
@@ -54,8 +60,10 @@ def _available_bars(adapter: CsvAdapter) -> dict[str, list[dict]]:
 
 
 def run_historical_bootstrap() -> dict:
-    adapter = CsvAdapter(DATA_DIR)
-    tracker = _load_tracker()
+    data_dir = os.getenv("DATA_DIR", DEFAULT_DATA_DIR)
+    path = shadow_state_path()
+    adapter = CsvAdapter(data_dir)
+    tracker = _load_tracker(path)
 
     total_added = 0
     total_resolved = 0
@@ -77,28 +85,40 @@ def run_historical_bootstrap() -> dict:
         if resolved:
             print(f"  {symbol}: {resolved} outcomes resolved")
 
-    atomic_write_json(SHADOW_PATH, tracker.to_dict())
+    atomic_write_json(path, tracker.to_dict())
     summary = tracker.summary()
-    summary["path"] = SHADOW_PATH
+    summary["path"] = path
     summary["mode"] = MODE_HISTORICAL
     summary["added"] = total_added
     summary["resolved_now"] = total_resolved
     return summary
 
 
-def run_forward_observation() -> dict:
-    adapter = CsvAdapter(DATA_DIR)
-    tracker = _load_tracker()
-    bars_by_symbol = _available_bars(adapter)
+def run_forward_observation(real_data_dir: str | None = None,
+                            state_path: str | None = None,
+                            now: datetime | None = None) -> dict:
+    data_dir = os.getenv("DATA_DIR", DEFAULT_DATA_DIR)
+    path = state_path or shadow_state_path()
+    env_real_data_dir = (os.getenv("REAL_DATA_DIR") or "").strip()
+    if real_data_dir and env_real_data_dir:
+        requested = os.path.abspath(real_data_dir)
+        configured = os.path.abspath(env_real_data_dir)
+        if requested != configured:
+            raise RuntimeError(
+                "Forward observation data path does not match REAL_DATA_DIR."
+            )
+    adapter = CsvAdapter(data_dir, real_dir=real_data_dir)
+    tracker = _load_tracker(path)
+    bars_by_symbol = _available_bars(adapter, now)
     latest_by_symbol = {symbol: bars[-1]["ts"] for symbol, bars in bars_by_symbol.items()}
 
     if not tracker.forward_observation_started:
         tracker.initialize_forward_observation(latest_by_symbol)
         for symbol, bars in bars_by_symbol.items():
             tracker.resolve_outcomes(symbol, bars)
-        atomic_write_json(SHADOW_PATH, tracker.to_dict())
+        atomic_write_json(path, tracker.to_dict())
         summary = tracker.summary()
-        summary["path"] = SHADOW_PATH
+        summary["path"] = path
         summary["mode"] = MODE_FORWARD
         summary["added"] = 0
         summary["resolved_now"] = 0
@@ -131,13 +151,13 @@ def run_forward_observation() -> dict:
     if any_new_bar and total_added:
         tracker.forward_last_message = f"Forward observation collected {total_added} new records."
     elif any_new_bar:
-        tracker.forward_last_message = "New completed bars processed; no actionable BUY signals recorded."
+        tracker.forward_last_message = "New completed bars processed; no strategy observations were added."
     else:
         tracker.forward_last_message = "No new completed bars since last forward observation."
 
-    atomic_write_json(SHADOW_PATH, tracker.to_dict())
+    atomic_write_json(path, tracker.to_dict())
     summary = tracker.summary()
-    summary["path"] = SHADOW_PATH
+    summary["path"] = path
     summary["mode"] = MODE_FORWARD
     summary["added"] = total_added
     summary["resolved_now"] = total_resolved

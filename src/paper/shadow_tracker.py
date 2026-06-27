@@ -151,19 +151,19 @@ class ShadowTracker:
                              warmup: int = 100,
                              data_source: str = "",
                              adjustment: str = "unknown") -> int:
-        """Walk all bars for state, but record only BUY signals after watermark."""
+        """Replay state and record each strategy output after the watermark."""
         added = 0
         position_open = False
         for i in range(warmup, len(bars)):
             window = bars[:i + 1]
             sig = strat.signal(window, position_open)
             ts = window[-1]["ts"]
+            if ts > observed_after:
+                price = window[-1]["close"]
+                if self.observe(strat.name, instrument, ts, sig.name, price,
+                                ORIGIN_FORWARD, data_source, adjustment):
+                    added += 1
             if sig is Signal.BUY and not position_open:
-                if ts > observed_after:
-                    price = window[-1]["close"]
-                    if self.observe(strat.name, instrument, ts, "BUY", price,
-                                    ORIGIN_FORWARD, data_source, adjustment):
-                        added += 1
                 position_open = True
             elif sig is Signal.SELL and position_open:
                 position_open = False
@@ -211,6 +211,8 @@ class ShadowTracker:
             h_ret: dict[str, list[float]] = {f"h{h}": [] for h in HORIZONS}
             for rec in self.records:
                 if origin_filter and rec.origin != origin_filter:
+                    continue
+                if rec.signal_type != "BUY":
                     continue
                 for h in HORIZONS:
                     h_key = f"h{h}"

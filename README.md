@@ -94,14 +94,22 @@ SHADOW_STATE_PATH=/mnt/data/shadow_state.json
 ```
 
 It refreshes market CSV/meta files into `REAL_DATA_DIR`, then updates the shadow
-ledger in forward observation mode. If no forward watermark exists, it
+ledger at `SHADOW_STATE_PATH` in forward observation mode. Both paths are
+resolved at request time and passed directly to the forward runner. If no
+forward watermark exists, it
 initializes one and waits for the next completed bar. It does not place trades,
 create orders, run on a schedule, poll the dashboard, or mutate the paper
 portfolio.
 
+The default yfinance end date is close-aware and exclusive: before 16:00 ET it
+stops before the current session; after 16:00 ET it includes that day's bar.
+Weekend refreshes include Friday's completed bar. US market holidays and early
+closes are not modeled.
+
 ## Railway Cron refresh
 
-To avoid forgetting manual refreshes, create a separate Railway Cron service
+No schedule is created by this repository. To avoid forgetting manual
+refreshes, create a separate Railway Cron service
 from the same repo if desired. Railway volumes should not be treated as shared
 between services, so the recommended cron service does **not** mount a volume.
 Instead, it calls the dashboard service's protected refresh endpoint; the

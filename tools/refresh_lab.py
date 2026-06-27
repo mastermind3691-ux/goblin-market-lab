@@ -21,18 +21,27 @@ def refresh_lab(symbols: list[str], start: str) -> dict:
     real_data_dir = (os.getenv("REAL_DATA_DIR") or "").strip()
     if not real_data_dir:
         raise RuntimeError("REAL_DATA_DIR is required. Set REAL_DATA_DIR=/mnt/data/real.")
+    shadow_state_path = (os.getenv("SHADOW_STATE_PATH") or "").strip()
+    if not shadow_state_path:
+        raise RuntimeError(
+            "SHADOW_STATE_PATH is required. Set SHADOW_STATE_PATH=/mnt/data/shadow_state.json."
+        )
 
     refresh = refresh_market_data(
         symbols, start,
         output_dir=real_data_dir,
         write_raw=False,
     )
-    shadow = run_forward_observation()
+    shadow = run_forward_observation(
+        real_data_dir=real_data_dir,
+        state_path=shadow_state_path,
+    )
 
     return {
         "symbols_refreshed": refresh["symbols"],
         "latest_bar_date": refresh["latest_bar_date"],
         "output_dir": refresh["output_dir"],
+        "shadow_state_path": shadow["path"],
         "forward_observation_started": shadow["forward_observation_started"],
         "forward_observed_through": shadow["forward_observed_through"],
         "new_forward_records_last_run": shadow["new_forward_records_last_run"],

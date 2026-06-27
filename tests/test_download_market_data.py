@@ -1,6 +1,8 @@
 import unittest
 import tempfile
+from datetime import datetime
 from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -99,3 +101,18 @@ class TestRefreshMarketData(unittest.TestCase):
 
         self.assertEqual(result["symbols"], ["SPY"])
         self.assertIsNone(result["refreshed"][0]["raw_path"])
+
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_default_end_includes_bar_after_market_close(self, mock_fetch):
+        mock_fetch.return_value = _mock_dataframe()
+        now = datetime(2026, 6, 26, 16, 1,
+                       tzinfo=ZoneInfo("America/New_York"))
+
+        with tempfile.TemporaryDirectory() as d:
+            result = refresh_market_data(
+                ["SPY"], "2023-01-01",
+                output_dir=d, write_raw=False, now=now,
+            )
+
+        mock_fetch.assert_called_once_with("SPY", "2023-01-01", "2026-06-27")
+        self.assertEqual(result["download_end_exclusive"], "2026-06-27")

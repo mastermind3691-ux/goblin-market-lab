@@ -210,6 +210,7 @@ class TestAdminRefresh(unittest.TestCase):
         os.environ.pop("DASHBOARD_PASSWORD", None)
         os.environ.pop("DASHBOARD_USERNAME", None)
         os.environ.pop("REAL_DATA_DIR", None)
+        os.environ.pop("SHADOW_STATE_PATH", None)
 
     def test_refresh_requires_auth(self):
         response = self.client.post(
@@ -257,6 +258,7 @@ class TestAdminRefresh(unittest.TestCase):
 
     def test_successful_refresh_uses_fixed_inputs_and_reports_safety(self):
         os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        os.environ["SHADOW_STATE_PATH"] = "/mnt/data/shadow_state.json"
         headers = _basic()
         headers["X-Goblin-Action"] = "refresh-market-data"
         with patch.object(web_app, "refresh_market_data") as refresh, \
@@ -267,6 +269,7 @@ class TestAdminRefresh(unittest.TestCase):
                 "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
             }
             shadow.return_value = {
+                "path": "/mnt/data/shadow_state.json",
                 "total": 429,
                 "historical_bootstrap": 429,
                 "forward_observed": 0,
@@ -291,10 +294,26 @@ class TestAdminRefresh(unittest.TestCase):
             ["SPY", "GLD"], "2000-01-01",
             output_dir="/mnt/data/real", write_raw=False,
         )
-        shadow.assert_called_once_with()
+        shadow.assert_called_once_with(
+            real_data_dir="/mnt/data/real",
+            state_path="/mnt/data/shadow_state.json",
+        )
+
+    def test_missing_shadow_state_path_returns_400_before_refresh(self):
+        os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        headers = _basic()
+        headers["X-Goblin-Action"] = "refresh-market-data"
+
+        with patch.object(web_app, "refresh_market_data") as refresh:
+            response = self.client.post("/admin/refresh", headers=headers)
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("SHADOW_STATE_PATH", response.get_json()["setup"])
+        refresh.assert_not_called()
 
     def test_lock_releases_when_refresh_fails(self):
         os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        os.environ["SHADOW_STATE_PATH"] = "/mnt/data/shadow_state.json"
         headers = _basic()
         headers["X-Goblin-Action"] = "refresh-market-data"
         with patch.object(web_app, "refresh_market_data", side_effect=RuntimeError("boom")):
@@ -306,6 +325,7 @@ class TestAdminRefresh(unittest.TestCase):
 
     def test_double_refresh_returns_409(self):
         os.environ["REAL_DATA_DIR"] = "/mnt/data/real"
+        os.environ["SHADOW_STATE_PATH"] = "/mnt/data/shadow_state.json"
         headers = _basic()
         headers["X-Goblin-Action"] = "refresh-market-data"
         self.assertTrue(web_app._refresh_lock.acquire(blocking=False))

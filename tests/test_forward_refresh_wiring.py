@@ -4,11 +4,15 @@ import os
 import tempfile
 import unittest
 from datetime import date, datetime, timedelta
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
+
+import pandas as pd
 
 from src.paper.persistence import atomic_write_json, load_json
 from src.paper.shadow_tracker import ShadowTracker
 from tools.run_shadow_tracking import run_forward_observation
+from tools.refresh_market_data import refresh_market_data
 
 
 def _write_bars(directory: str, symbol: str, dates: list[date]) -> None:
@@ -39,6 +43,39 @@ def _write_bars(directory: str, symbol: str, dates: list[date]) -> None:
 
 
 class TestForwardRefreshWiring(unittest.TestCase):
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_incomplete_vendor_row_does_not_create_forward_record(self, fetch):
+        fetch.return_value = pd.DataFrame({
+            "Open": [734.0, 729.0],
+            "High": [739.0, 736.0],
+            "Low": [729.0, 727.0],
+            "Close": [734.3, float("nan")],
+            "Adj Close": [734.3, float("nan")],
+            "Volume": [53934400, 69241946],
+        }, index=pd.to_datetime(["2026-06-25", "2026-06-26"]))
+
+        with tempfile.TemporaryDirectory() as real_dir:
+            state_path = os.path.join(real_dir, "shadow_state.json")
+            refresh = refresh_market_data(
+                ["SPY", "GLD"], "2000-01-01", "2026-06-27",
+                output_dir=real_dir, write_raw=False,
+            )
+            shadow = run_forward_observation(
+                real_data_dir=real_dir,
+                state_path=state_path,
+                now=datetime(2026, 6, 26, 17, 0,
+                             tzinfo=ZoneInfo("America/New_York")),
+            )
+
+        self.assertEqual(refresh["latest_bar_date"], {
+            "SPY": "2026-06-25", "GLD": "2026-06-25",
+        })
+        self.assertEqual(len(refresh["excluded_vendor_rows"]), 2)
+        self.assertEqual(shadow["forward_observed"], 0)
+        self.assertEqual(shadow["forward_observed_through"], {
+            "SPY": "2026-06-25", "GLD": "2026-06-25",
+        })
+
     def test_new_completed_bars_persist_across_restart(self):
         dates = []
         current = date(2026, 1, 2)

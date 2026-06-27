@@ -40,6 +40,8 @@ def refresh_lab(symbols: list[str], start: str) -> dict:
     return {
         "symbols_refreshed": refresh["symbols"],
         "latest_bar_date": refresh["latest_bar_date"],
+        "latest_vendor_row_date": refresh["latest_vendor_row_date"],
+        "excluded_vendor_rows": refresh["excluded_vendor_rows"],
         "output_dir": refresh["output_dir"],
         "shadow_state_path": shadow["path"],
         "forward_observation_started": shadow["forward_observation_started"],
@@ -53,7 +55,13 @@ def refresh_lab(symbols: list[str], start: str) -> dict:
 def print_summary(summary: dict) -> None:
     print("Refresh Lab complete.")
     print(f"  symbols refreshed: {', '.join(summary['symbols_refreshed'])}")
-    print(f"  latest bar dates: {summary['latest_bar_date']}")
+    print(f"  latest accepted bar dates: {summary['latest_bar_date']}")
+    print(f"  latest vendor row dates: {summary['latest_vendor_row_date']}")
+    for excluded in summary["excluded_vendor_rows"]:
+        print(
+            f"  excluded vendor row: {excluded['symbol']} {excluded['date']} "
+            f"{excluded['reason']}"
+        )
     print(f"  output dir: {summary['output_dir']}")
     print(f"  forward_observation_started: {summary['forward_observation_started']}")
     print(f"  forward_observed_through: {summary['forward_observed_through']}")

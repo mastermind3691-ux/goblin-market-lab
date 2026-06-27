@@ -196,6 +196,8 @@ def create_app() -> Flask:
                 "symbols_refreshed": refresh["symbols"],
                 "output_dir": refresh["output_dir"],
                 "latest_bar_date": refresh["latest_bar_date"],
+                "latest_vendor_row_date": refresh["latest_vendor_row_date"],
+                "excluded_vendor_rows": refresh["excluded_vendor_rows"],
                 "shadow_state_path": shadow["path"],
                 "shadow_total": shadow["total"],
                 "historical_bootstrap": shadow["historical_bootstrap"],

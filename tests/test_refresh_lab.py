@@ -27,6 +27,14 @@ class TestRefreshLab(unittest.TestCase):
             refresh.return_value = {
                 "symbols": ["SPY", "GLD"],
                 "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "latest_vendor_row_date": {
+                    "SPY": "2026-06-23", "GLD": "2026-06-23",
+                },
+                "excluded_vendor_rows": [{
+                    "symbol": "SPY",
+                    "date": "2026-06-23",
+                    "reason": "excluded because Close/Adj Close was NaN",
+                }],
                 "output_dir": "/mnt/data/real",
             }
             forward.return_value = {
@@ -48,6 +56,8 @@ class TestRefreshLab(unittest.TestCase):
             state_path="/mnt/data/shadow_state.json",
         )
         self.assertEqual(summary["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertEqual(summary["latest_vendor_row_date"]["SPY"], "2026-06-23")
+        self.assertEqual(len(summary["excluded_vendor_rows"]), 1)
         self.assertEqual(summary["shadow_state_path"], "/mnt/data/shadow_state.json")
         self.assertFalse(summary["can_place_orders"])
 

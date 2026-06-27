@@ -267,6 +267,14 @@ class TestAdminRefresh(unittest.TestCase):
                 "symbols": ["SPY", "GLD"],
                 "output_dir": "/mnt/data/real",
                 "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "latest_vendor_row_date": {
+                    "SPY": "2026-06-23", "GLD": "2026-06-23",
+                },
+                "excluded_vendor_rows": [{
+                    "symbol": "SPY",
+                    "date": "2026-06-23",
+                    "reason": "excluded because Close/Adj Close was NaN",
+                }],
             }
             shadow.return_value = {
                 "path": "/mnt/data/shadow_state.json",
@@ -288,6 +296,10 @@ class TestAdminRefresh(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["can_place_orders"])
         self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertEqual(payload["latest_bar_date"]["SPY"], "2026-06-22")
+        self.assertEqual(payload["latest_vendor_row_date"]["SPY"], "2026-06-23")
+        self.assertEqual(payload["excluded_vendor_rows"][0]["symbol"], "SPY")
+        self.assertIn("Close/Adj Close", payload["excluded_vendor_rows"][0]["reason"])
         self.assertTrue(payload["forward_observation_started"])
         self.assertEqual(payload["new_forward_records_last_run"], 0)
         refresh.assert_called_once_with(

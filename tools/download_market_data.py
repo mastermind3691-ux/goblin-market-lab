@@ -39,7 +39,13 @@ def fetch_bars(symbol: str, start: str, end: str) -> pd.DataFrame:
     return df
 
 
-def dataframe_to_csv_text(df: pd.DataFrame) -> str:
+def _date_label(value) -> str:
+    if hasattr(value, "strftime"):
+        return value.strftime("%Y-%m-%d")
+    return str(value)
+
+
+def dataframe_to_csv_result(df: pd.DataFrame) -> dict:
     df = df.copy()
     df.index.name = "date"
     df.columns = [c.lower().replace(" ", "_") for c in df.columns]
@@ -47,8 +53,41 @@ def dataframe_to_csv_text(df: pd.DataFrame) -> str:
     expected = ["open", "high", "low", "close", "volume"]
     cols = [c for c in expected if c in df.columns]
     required_price_cols = [c for c in ("open", "high", "low", "close") if c in df.columns]
-    df = df.dropna(subset=required_price_cols)
-    return df[cols].to_csv()
+    invalid = df[required_price_cols].isna().any(axis=1)
+    display_names = {
+        "open": "Open",
+        "high": "High",
+        "low": "Low",
+        "close": "Close",
+        "adj_close": "Adj Close",
+    }
+    excluded_rows = []
+    for row_date, row in df[invalid].iterrows():
+        missing = [
+            display_names[column]
+            for column in ("open", "high", "low", "close", "adj_close")
+            if column in df.columns and pd.isna(row[column])
+        ]
+        excluded_rows.append({
+            "date": _date_label(row_date),
+            "reason": f"excluded because {'/'.join(missing)} was NaN",
+        })
+
+    accepted = df[~invalid]
+    return {
+        "csv_text": accepted[cols].to_csv(),
+        "accepted_bar_count": len(accepted),
+        "accepted_date_range": (
+            (_date_label(accepted.index[0]), _date_label(accepted.index[-1]))
+            if not accepted.empty else (None, None)
+        ),
+        "latest_vendor_row_date": _date_label(df.index[-1]) if not df.empty else None,
+        "excluded_rows": excluded_rows,
+    }
+
+
+def dataframe_to_csv_text(df: pd.DataFrame) -> str:
+    return dataframe_to_csv_result(df)["csv_text"]
 
 
 def main() -> None:
@@ -73,15 +112,17 @@ def main() -> None:
     os.makedirs(args.output_dir, exist_ok=True)
     out_path = os.path.join(args.output_dir, f"{symbol}.csv")
 
-    csv_text = dataframe_to_csv_text(df)
+    converted = dataframe_to_csv_result(df)
+    csv_text = converted["csv_text"]
     with open(out_path, "w", encoding="utf-8") as fh:
         fh.write(csv_text)
 
-    bar_count = len(df)
-    date_min = df.index.min().strftime("%Y-%m-%d")
-    date_max = df.index.max().strftime("%Y-%m-%d")
+    bar_count = converted["accepted_bar_count"]
+    date_min, date_max = converted["accepted_date_range"]
     print(f"OK: {bar_count} bars written to {out_path}")
     print(f"    date range: {date_min} to {date_max}")
+    for excluded in converted["excluded_rows"]:
+        print(f"WARNING: {symbol} {excluded['date']} {excluded['reason']}.")
     print(f"\nNext step -- import into the lab:")
     print(f"    python -m tools.import_csv --symbol {symbol} "
           f"--input {out_path} --source yfinance --adjustment unknown")

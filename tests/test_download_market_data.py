@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 
-from tools.download_market_data import dataframe_to_csv_text
+from tools.download_market_data import dataframe_to_csv_result, dataframe_to_csv_text
 from tools.refresh_market_data import refresh_market_data
 
 
@@ -33,6 +33,18 @@ def _mock_multiindex_dataframe():
     return pd.DataFrame(data, index=dates, columns=cols)
 
 
+def _mock_incomplete_latest_dataframe():
+    dates = pd.to_datetime(["2026-06-25", "2026-06-26"])
+    return pd.DataFrame({
+        "Open": [734.0, 729.0],
+        "High": [739.0, 736.0],
+        "Low": [729.0, 727.0],
+        "Close": [734.3, float("nan")],
+        "Adj Close": [734.3, float("nan")],
+        "Volume": [53934400, 69241946],
+    }, index=dates)
+
+
 class TestDataframeToCsv(unittest.TestCase):
     def test_sorts_ascending_and_normalizes_columns(self):
         df = _mock_dataframe()
@@ -52,19 +64,16 @@ class TestDataframeToCsv(unittest.TestCase):
         self.assertEqual(len(lines), 5)  # header + 4 rows
 
     def test_omits_vendor_incomplete_row_with_missing_close(self):
-        df = _mock_dataframe()
-        df.loc[pd.Timestamp("2023-01-06")] = {
-            "Open": 381.0,
-            "High": 382.0,
-            "Low": 379.0,
-            "Close": float("nan"),
-            "Volume": 900000,
-        }
+        df = _mock_incomplete_latest_dataframe()
 
-        text = dataframe_to_csv_text(df)
+        result = dataframe_to_csv_result(df)
 
-        self.assertNotIn("2023-01-06", text)
-        self.assertEqual(len(text.strip().splitlines()), 5)
+        self.assertNotIn("2026-06-26", result["csv_text"])
+        self.assertEqual(result["latest_vendor_row_date"], "2026-06-26")
+        self.assertEqual(result["excluded_rows"], [{
+            "date": "2026-06-26",
+            "reason": "excluded because Close/Adj Close was NaN",
+        }])
 
 
 class TestFetchBarsMocked(unittest.TestCase):
@@ -131,3 +140,21 @@ class TestRefreshMarketData(unittest.TestCase):
 
         mock_fetch.assert_called_once_with("SPY", "2023-01-01", "2026-06-27")
         self.assertEqual(result["download_end_exclusive"], "2026-06-27")
+
+    @patch("tools.refresh_market_data.fetch_bars")
+    def test_reports_raw_latest_row_separately_from_accepted_bar(self, mock_fetch):
+        mock_fetch.return_value = _mock_incomplete_latest_dataframe()
+
+        with tempfile.TemporaryDirectory() as d:
+            result = refresh_market_data(
+                ["SPY"], "2000-01-01", "2026-06-27",
+                output_dir=d, write_raw=False,
+            )
+
+        self.assertEqual(result["latest_bar_date"], {"SPY": "2026-06-25"})
+        self.assertEqual(result["latest_vendor_row_date"], {"SPY": "2026-06-26"})
+        self.assertEqual(result["excluded_vendor_rows"], [{
+            "symbol": "SPY",
+            "date": "2026-06-26",
+            "reason": "excluded because Close/Adj Close was NaN",
+        }])

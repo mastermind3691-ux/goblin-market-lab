@@ -726,7 +726,11 @@
           const payload = await response.json();
           if (!response.ok || !payload.ok) throw new Error(payload.error || "Refresh failed.");
           refreshStatus.className = "action-status ok";
-          refreshStatus.textContent = `${payload.forward_message} Latest bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.`;
+          const excludedRows = payload.excluded_vendor_rows || [];
+          const excludedMessage = excludedRows.length
+            ? ` Excluded vendor rows: ${excludedRows.map((row) => `${row.symbol} ${row.date} ${row.reason}`).join("; ")}.`
+            : "";
+          refreshStatus.textContent = `${payload.forward_message} Latest accepted bars: SPY ${payload.latest_bar_date.SPY || "unknown"}, GLD ${payload.latest_bar_date.GLD || "unknown"}.${excludedMessage}`;
         } catch (error) {
           refreshStatus.className = "action-status error";
           refreshStatus.textContent = error.message;

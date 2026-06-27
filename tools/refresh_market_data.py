@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 
 from src.data.completed_bars import yfinance_exclusive_end
-from tools.download_market_data import dataframe_to_csv_text, fetch_bars
+from tools.download_market_data import dataframe_to_csv_result, fetch_bars
 from tools.import_csv import import_csv_text, real_data_dir
 
 
@@ -34,7 +34,8 @@ def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
     for symbol in symbols:
         symbol = symbol.upper()
         df = fetch_bars(symbol, start, end)
-        csv_text = dataframe_to_csv_text(df)
+        converted = dataframe_to_csv_result(df)
+        csv_text = converted["csv_text"]
 
         raw_path = None
         if write_raw:
@@ -47,6 +48,11 @@ def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
             adjustment=adjustment, output_dir=out_dir,
         )
         imported["raw_path"] = raw_path
+        imported["latest_vendor_row_date"] = converted["latest_vendor_row_date"]
+        imported["excluded_vendor_rows"] = [
+            {"symbol": symbol, **row}
+            for row in converted["excluded_rows"]
+        ]
         refreshed.append(imported)
 
     return {
@@ -54,6 +60,14 @@ def refresh_market_data(symbols: list[str], start: str, end: str | None = None,
         "output_dir": out_dir,
         "download_end_exclusive": end,
         "latest_bar_date": {r["symbol"]: r["latest_bar_date"] for r in refreshed},
+        "latest_vendor_row_date": {
+            r["symbol"]: r["latest_vendor_row_date"] for r in refreshed
+        },
+        "excluded_vendor_rows": [
+            row
+            for item in refreshed
+            for row in item["excluded_vendor_rows"]
+        ],
         "refreshed": refreshed,
     }
 
@@ -81,6 +95,9 @@ def main() -> None:
         print(f"    raw: {item['raw_path']}")
         print(f"    csv: {item['csv_path']}")
         print(f"    date range: {item['date_range'][0]} to {item['date_range'][1]}")
+        print(f"    latest vendor row: {item['latest_vendor_row_date']}")
+        for excluded in item["excluded_vendor_rows"]:
+            print(f"    WARNING: {excluded['date']} {excluded['reason']}.")
 
     print("\nDone. Run 'python -m tools.run_backtest' to see updated scorecards.")
 

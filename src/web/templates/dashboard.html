@@ -366,6 +366,7 @@
   </svg>
   <main class="shell">
     {% set evidence_target = 30 %}
+    {% set forward_observations = shadow.forward_observed or 0 %}
     {% set forward_samples = shadow.forward_sample_size or 0 %}
     {% set forward_pct = 100 if forward_samples >= evidence_target else ((forward_samples * 100 / evidence_target)|round(0, 'floor')) %}
     {% set freshness = namespace(stale=false) %}
@@ -403,7 +404,7 @@
           <div class="hero-ring {% if forward_samples == 0 %}warn{% endif %}" style="--ring: {{ forward_pct }}%" data-forward-evidence-ring aria-hidden="true">
             <div class="ring-core">
               <div class="pct">{{ forward_pct|int }}%</div>
-              <div class="cap">forward<br>evidence</div>
+              <div class="cap">forward BUY<br>evidence</div>
             </div>
           </div>
         </div>
@@ -413,9 +414,11 @@
           <span class="pill muted">{{ summary.outcome.historical }}</span>
         </div>
 
-        <div class="notice {% if forward_samples > 0 %}safe{% endif %}">
+        <div class="notice {% if forward_observations > 0 %}safe{% endif %}">
           <span class="dot"></span>
-          {% if forward_samples == 0 %}
+          {% if forward_observations > 0 and forward_samples == 0 %}
+            Forward observations: {{ forward_observations }}. The lab is watching completed bars. No BUY evidence samples yet.
+          {% elif forward_samples == 0 %}
             {{ summary.outcome.forward }} — waiting for the next completed bar.
           {% else %}
             {{ summary.outcome.forward }} — {{ forward_samples }} of {{ evidence_target }} samples gathered.
@@ -433,16 +436,24 @@
             </div>
             <div class="gauge-note">Order placement is locked. No broker, order or execution code.</div>
           </article>
-          <article class="gauge-card" data-forward-evidence-gauge data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
+          <article class="gauge-card" data-forward-evidence-gauge data-forward-observation-count="{{ forward_observations }}" data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
             <div class="gauge-top">
               <div>
-                <div class="gauge-label">Forward evidence</div>
+                <div class="gauge-label">Forward BUY evidence</div>
                 <div class="gauge-value">{{ forward_samples }} / {{ evidence_target }}</div>
               </div>
               <div class="gauge-ring {% if forward_samples == 0 %}warn{% endif %}" style="--ring: {{ forward_pct }}%" aria-hidden="true">{{ forward_pct|int }}%</div>
             </div>
             <div class="meter"><span class="meter-fill {% if forward_samples == 0 %}warn{% endif %}" style="width: {{ forward_pct }}%"></span></div>
-            <div class="gauge-note">Forward only: {% if forward_samples == 0 %}initialized, waiting{% else %}collecting observations{% endif %}.</div>
+            <div class="gauge-note">
+              {% if forward_observations > 0 and forward_samples == 0 %}
+                {{ forward_observations }} observations recorded; no BUY evidence samples yet.
+              {% elif forward_observations == 0 %}
+                Initialized and waiting for a newly completed bar.
+              {% else %}
+                {{ forward_observations }} observations; {{ forward_samples }} BUY evidence samples.
+              {% endif %}
+            </div>
           </article>
           <article class="gauge-card" data-data-freshness-gauge>
             <div class="gauge-top">
@@ -606,14 +617,14 @@
               <div class="muted">sample size: {{ shadow.historical_sample_size }}</div>
             </div>
             <div class="shadow-box accent">
-              <div class="tag">Forward observed</div>
-              <strong>{{ shadow.forward_observed }}</strong>
-              <div class="muted">sample size: {{ shadow.forward_sample_size }}</div>
+              <div class="tag">Forward observations</div>
+              <strong>{{ forward_observations }}</strong>
+              <div class="muted">all HOLD / SELL / BUY outputs</div>
             </div>
           </div>
-          <div class="evidence-progress" data-shadow-forward-progress data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
+          <div class="evidence-progress" data-shadow-forward-progress data-forward-observation-count="{{ forward_observations }}" data-forward-sample-size="{{ forward_samples }}" data-forward-target="{{ evidence_target }}">
             <div class="meter"><span class="meter-fill {% if forward_samples == 0 %}warn{% endif %}" style="width: {{ forward_pct }}%"></span></div>
-            <div class="muted">Forward only: {{ forward_samples }} / {{ evidence_target }} samples. Historical bootstrap is not counted as forward proof.</div>
+            <div class="muted">Forward BUY evidence: {{ forward_samples }} / {{ evidence_target }} samples. Historical bootstrap is not counted as forward proof.</div>
           </div>
           <div class="chip-row">
             <span class="pill muted">resolved: {{ shadow.resolved }}</span>
@@ -621,13 +632,13 @@
             <span class="pill {% if shadow.forward_observation_started %}safe{% else %}warn{% endif %}">
               {% if not shadow.forward_observation_started %}
                 Forward: not started
-              {% elif shadow.forward_observed == 0 %}
+              {% elif forward_observations == 0 %}
                 Forward: initialized, waiting
               {% else %}
-                Forward: collecting
+                Forward observations: collecting
               {% endif %}
             </span>
-            <span class="pill {% if shadow.enough_forward_data %}safe{% else %}watch{% endif %}">{% if shadow.enough_forward_data %}Enough forward data{% else %}Not enough forward data yet{% endif %}</span>
+            <span class="pill {% if shadow.enough_forward_data %}safe{% else %}watch{% endif %}">{% if shadow.enough_forward_data %}Enough forward BUY evidence{% else %}Not enough forward BUY evidence yet{% endif %}</span>
           </div>
           <div class="keyline">
             <div>
@@ -640,9 +651,15 @@
                 {% endif %}
               </strong>
             </div>
-            <div><span>Last forward records</span><strong>{{ shadow.new_forward_records_last_run }}</strong></div>
+            <div><span>Last-run observations</span><strong>{{ shadow.new_forward_records_last_run }}</strong></div>
           </div>
-          <p class="muted" style="margin-top:9px">{{ shadow.verdict }}</p>
+          <p class="muted" style="margin-top:9px">
+            {% if forward_observations > 0 and forward_samples == 0 %}
+              The lab is watching completed bars. No BUY evidence samples yet.
+            {% else %}
+              {{ shadow.verdict }}
+            {% endif %}
+          </p>
           <p class="muted" style="margin-top:6px">No trades placed. No paper portfolio impact.</p>
         </div>
       </div>

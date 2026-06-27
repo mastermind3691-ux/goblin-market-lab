@@ -93,7 +93,7 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertNotIn("method=\"post\"", body.lower())
         self.assertNotIn("setInterval", body)
         self.assertNotIn("setinterval", body.lower())
-        self.assertIn("Forward:", body)
+        self.assertIn("Forward observations:", body)
         self.assertNotIn("can_place_orders =", body)
         self.assertNotIn("not_implemented", body)
 
@@ -124,15 +124,15 @@ class TestDashboardStatusApi(unittest.TestCase):
         shadow = {
             "historical_bootstrap": 999,
             "historical_sample_size": 999,
-            "forward_observed": 0,
+            "forward_observed": 4,
             "forward_sample_size": 0,
             "resolved": 999,
             "pending": 0,
             "forward_observation_started": True,
             "enough_forward_data": False,
             "forward_observed_through": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
-            "new_forward_records_last_run": 0,
-            "verdict": "Forward observation initialized - waiting.",
+            "new_forward_records_last_run": 4,
+            "verdict": "Forward shadow evidence collecting - not enough data.",
         }
         market_info = {
             "trade_impact": "none",
@@ -166,7 +166,10 @@ class TestDashboardStatusApi(unittest.TestCase):
              patch.object(web_app, "market_info_payload", return_value=market_info):
             body = self.client.get("/").get_data(as_text=True)
 
-        self.assertIn('data-forward-evidence-gauge data-forward-sample-size="0" data-forward-target="30"', body)
+        self.assertIn('data-forward-evidence-gauge data-forward-observation-count="4" data-forward-sample-size="0" data-forward-target="30"', body)
+        self.assertIn("Forward observations", body)
+        self.assertIn("Forward BUY evidence: 0 / 30", body)
+        self.assertIn("The lab is watching completed bars. No BUY evidence samples yet.", body)
         self.assertIn("Historical bootstrap is not counted as forward proof.", body)
         self.assertNotIn('data-forward-sample-size="999"', body)
         self.assertIn('data-scorecard-evidence-progress data-trade-count="7" data-min-samples="30"', body)
@@ -174,7 +177,7 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertIn("holiday calendar: not modeled", body)
         self.assertIn("SPY 2026-06-22", body)
         self.assertNotIn("{'GLD':", body)
-        self.assertIn("Not enough forward data yet", body)
+        self.assertIn("Not enough forward BUY evidence yet", body)
         self.assertIn("Research-only: human approval required before anything advances. Pilot not ready.", body)
 
     def test_market_info_api_open_in_dev_and_read_only(self):

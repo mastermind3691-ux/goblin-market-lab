@@ -46,6 +46,8 @@ def dataframe_to_csv_text(df: pd.DataFrame) -> str:
     df = df.sort_index(ascending=True)
     expected = ["open", "high", "low", "close", "volume"]
     cols = [c for c in expected if c in df.columns]
+    required_price_cols = [c for c in ("open", "high", "low", "close") if c in df.columns]
+    df = df.dropna(subset=required_price_cols)
     return df[cols].to_csv()
 
 

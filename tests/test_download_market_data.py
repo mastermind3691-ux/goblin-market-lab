@@ -51,6 +51,21 @@ class TestDataframeToCsv(unittest.TestCase):
         lines = [l for l in text.strip().split("\n") if l]
         self.assertEqual(len(lines), 5)  # header + 4 rows
 
+    def test_omits_vendor_incomplete_row_with_missing_close(self):
+        df = _mock_dataframe()
+        df.loc[pd.Timestamp("2023-01-06")] = {
+            "Open": 381.0,
+            "High": 382.0,
+            "Low": 379.0,
+            "Close": float("nan"),
+            "Volume": 900000,
+        }
+
+        text = dataframe_to_csv_text(df)
+
+        self.assertNotIn("2023-01-06", text)
+        self.assertEqual(len(text.strip().splitlines()), 5)
+
 
 class TestFetchBarsMocked(unittest.TestCase):
     @patch("tools.download_market_data.fetch_bars")

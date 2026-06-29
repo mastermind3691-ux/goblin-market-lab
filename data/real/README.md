@@ -54,6 +54,18 @@ with `--resampled-from 1H`. The tool records that label; it does not perform the
 resampling itself. Unknown adjustment or session policy values are surfaced as
 warnings.
 
+For a manual yfinance acquisition using the existing dependency, download real
+1H RTH bars and aggregate them truthfully into session-anchored 4H buckets:
+
+```bash
+python tools/download_real_4h_data.py --symbol GLD --symbol SPY
+```
+
+This records `source: yfinance_1h`, `resampled_from: 1H`, `adjustment: unknown`,
+and `session_policy: RTH`. yfinance limits intraday history; the default request
+is 730 days. The final bucket of an RTH session may be shorter than four hours
+because the regular US ETF session is 6.5 hours. No daily bars are used.
+
 Missing, synthetic, daily-timestamped, or incorrectly labelled files are not
 treated as 4H data. The CLI falls back to available daily data and emits
 `REQUESTED_TIMEFRAME_UNAVAILABLE`. It never constructs 4H bars from daily bars.

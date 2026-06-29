@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import csv
-import json
 import os
 from dataclasses import dataclass
 
 from .base import DataMeta
 from .csv_adapter import CsvAdapter
+from .four_hour_csv import validate_real_4h_files
 
 
 @dataclass(frozen=True)
@@ -16,6 +15,7 @@ class CsvDataSelection:
     bars: list[dict]
     meta: DataMeta
     effective_timeframe: str
+    warnings: tuple[str, ...] = ()
 
 
 class TimeframeCsvAdapter:
@@ -36,43 +36,51 @@ class TimeframeCsvAdapter:
         limit: int = 500,
     ) -> CsvDataSelection:
         if normalize_timeframe(requested_timeframe) == "4H":
-            selection = self._select_real_4h(instrument, limit)
+            selection, warnings = self._select_real_4h(instrument, limit)
             if selection is not None:
                 return selection
+        else:
+            warnings = ()
         return CsvDataSelection(
             bars=self.daily.bars(instrument, timeframe="1d", limit=limit),
             meta=self.daily.meta(instrument),
             effective_timeframe="1D",
+            warnings=warnings,
         )
 
     def _select_real_4h(
         self, instrument: str, limit: int
-    ) -> CsvDataSelection | None:
+    ) -> tuple[CsvDataSelection | None, tuple[str, ...]]:
+        rejection_warnings: list[str] = []
         for real_dir in self.daily.real_dirs:
             timeframe_dir = os.path.join(real_dir, "4h")
             csv_path = os.path.join(timeframe_dir, f"{instrument}.csv")
             meta_path = os.path.join(timeframe_dir, f"{instrument}.meta.json")
-            if not os.path.isfile(csv_path) or not os.path.isfile(meta_path):
+            if not os.path.isfile(csv_path) and not os.path.isfile(meta_path):
                 continue
-            meta_payload = _read_meta_payload(meta_path)
-            if (
-                normalize_timeframe(str(meta_payload.get("timeframe", ""))) != "4H"
-                or bool(meta_payload.get("synthetic", True))
-            ):
-                continue
-            bars = _read_bars(csv_path, limit)
-            if not _has_intraday_timestamps(bars):
-                continue
-            try:
-                meta = DataMeta(
-                    source=meta_payload.get("source", "csv_4h"),
-                    synthetic=False,
-                    adjustment=meta_payload.get("adjustment", "unknown"),
+            validation = validate_real_4h_files(csv_path, meta_path, instrument)
+            if not validation.ok:
+                rejection_warnings.append(
+                    "FOUR_HOUR_DATA_REJECTED: " + "; ".join(validation.errors)
                 )
-            except ValueError:
                 continue
-            return CsvDataSelection(bars=bars, meta=meta, effective_timeframe="4H")
-        return None
+            metadata = validation.metadata or {}
+            meta = DataMeta(
+                source=metadata["source"],
+                synthetic=False,
+                adjustment=metadata["adjustment"],
+            )
+            warnings = rejection_warnings + [
+                f"FOUR_HOUR_DATA_WARNING: {warning}"
+                for warning in validation.warnings
+            ]
+            return CsvDataSelection(
+                bars=list(validation.bars[-limit:]),
+                meta=meta,
+                effective_timeframe="4H",
+                warnings=tuple(warnings),
+            ), tuple(warnings)
+        return None, tuple(rejection_warnings)
 
 
 def normalize_timeframe(value: str) -> str:
@@ -82,45 +90,3 @@ def normalize_timeframe(value: str) -> str:
     if normalized in {"4h", "4hr", "4hour", "4hours"}:
         return "4H"
     return value.strip().upper()
-
-
-def _read_meta_payload(path: str) -> dict:
-    try:
-        with open(path, encoding="utf-8") as fh:
-            payload = json.load(fh)
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def _read_bars(path: str, limit: int) -> list[dict]:
-    rows: list[dict] = []
-    try:
-        with open(path, newline="", encoding="utf-8") as fh:
-            for row in csv.DictReader(fh):
-                rows.append({
-                    "ts": row.get("ts") or row.get("date", ""),
-                    "open": float(row["open"]),
-                    "high": float(row["high"]),
-                    "low": float(row["low"]),
-                    "close": float(row["close"]),
-                    "volume": float(row.get("volume", 0) or 0),
-                })
-    except (OSError, KeyError, TypeError, ValueError):
-        return []
-    rows.sort(key=lambda row: row["ts"])
-    return rows[-limit:]
-
-
-def _has_intraday_timestamps(bars: list[dict]) -> bool:
-    dates: set[str] = set()
-    has_multiple_bars_on_one_date = False
-    for bar in bars:
-        timestamp = str(bar.get("ts", ""))
-        if "T" not in timestamp and " " not in timestamp:
-            return False
-        date = timestamp[:10]
-        if date in dates:
-            has_multiple_bars_on_one_date = True
-        dates.add(date)
-    return has_multiple_bars_on_one_date

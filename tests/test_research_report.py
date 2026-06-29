@@ -114,8 +114,10 @@ class TestResearchReport(unittest.TestCase):
         root = Path(__file__).parents[1]
         paths = [
             root / "src" / "backtest" / "research_report.py",
+            root / "src" / "data" / "four_hour_csv.py",
             root / "src" / "data" / "timeframe_csv_adapter.py",
             root / "tools" / "run_smc_lsr_evaluation.py",
+            root / "tools" / "prepare_real_4h_data.py",
         ]
         prohibited = {"dashboard", "broker", "orders", "execution", "live"}
         for path in paths:
@@ -190,8 +192,13 @@ class TestResearchReport(unittest.TestCase):
                 encoding="utf-8",
             )
             (timeframe_dir / "GLD.meta.json").write_text(
-                '{"source":"fixture_4h","synthetic":false,'
-                '"adjustment":"adjusted","timeframe":"4H"}',
+                '{"symbol":"GLD","timeframe":"4H","source":"fixture_4h",'
+                '"synthetic":false,"adjustment":"adjusted",'
+                '"timezone":"America/New_York","session_policy":"RTH",'
+                '"generated_at":"2024-01-03T00:00:00+00:00","row_count":2,'
+                '"date_start":"2024-01-02T09:30:00",'
+                '"date_end":"2024-01-02T13:30:00",'
+                '"resampled_from":null,"notes":"fixture"}',
                 encoding="utf-8",
             )
 

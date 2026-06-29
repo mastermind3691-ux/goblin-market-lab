@@ -21,12 +21,38 @@ sidecar must explicitly declare the timeframe and provenance:
 
 ```json
 {
+  "symbol": "GLD",
+  "timeframe": "4H",
   "source": "vendor_name",
   "synthetic": false,
   "adjustment": "adjusted",
-  "timeframe": "4H"
+  "timezone": "America/New_York",
+  "session_policy": "RTH",
+  "generated_at": "2026-06-29T20:00:00+00:00",
+  "row_count": 2,
+  "date_start": "2026-06-26T09:30:00",
+  "date_end": "2026-06-26T13:30:00",
+  "resampled_from": null,
+  "notes": "User-provided vendor export."
 }
 ```
+
+Use the import tool to validate and write both files safely:
+
+```bash
+python tools/prepare_real_4h_data.py \
+  --symbol GLD \
+  --input path/to/GLD_4h.csv \
+  --source vendor_export \
+  --adjustment unknown \
+  --timezone America/New_York \
+  --session-policy RTH
+```
+
+If the input was genuinely aggregated from smaller intraday bars, declare it
+with `--resampled-from 1H`. The tool records that label; it does not perform the
+resampling itself. Unknown adjustment or session policy values are surfaced as
+warnings.
 
 Missing, synthetic, daily-timestamped, or incorrectly labelled files are not
 treated as 4H data. The CLI falls back to available daily data and emits

@@ -1,0 +1,15 @@
+{
+  "adjustment": "unknown",
+  "date_end": "2026-06-29T13:30:00-04:00",
+  "date_start": "2023-08-01T09:30:00-04:00",
+  "generated_at": "2026-06-29T21:07:04.409098+00:00",
+  "notes": "Manual yfinance 1H download with prepost=false. Consecutive RTH bars are grouped per session in chunks of up to four; the final session bucket may be shorter because US ETF RTH is 6.5 hours.",
+  "resampled_from": "1H",
+  "row_count": 1453,
+  "session_policy": "RTH",
+  "source": "yfinance_1h",
+  "symbol": "QQQ",
+  "synthetic": false,
+  "timeframe": "4H",
+  "timezone": "America/New_York"
+}

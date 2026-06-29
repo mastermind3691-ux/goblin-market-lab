@@ -4,6 +4,7 @@ import base64
 from unittest.mock import patch
 
 import src.web.app as web_app
+from src.instruments.registry import INSTRUMENTS
 from src.web.app import app, dashboard_summary
 
 PASSWORD = "refresh-test-password"
@@ -67,8 +68,8 @@ class TestDashboardStatusApi(unittest.TestCase):
         self.assertFalse(payload["safety"]["can_place_orders"])
         self.assertIn("dashboard_summary", payload)
         self.assertEqual(
-            [i["symbol"] for i in payload["dashboard_summary"]["instruments"]],
-            ["SPY", "GLD"],
+            sorted(i["symbol"] for i in payload["dashboard_summary"]["instruments"]),
+            sorted(INSTRUMENTS),
         )
 
     def test_dashboard_renders(self):

@@ -26,6 +26,9 @@ class Instrument:
 INSTRUMENTS: dict[str, Instrument] = {
     "SPY": Instrument("SPY", "S&P 500 ETF", "etf", continuous=False, fee_bps=5.0),
     "GLD": Instrument("GLD", "Gold ETF", "gold", continuous=False, fee_bps=8.0),
+    "IAU": Instrument("IAU", "iShares Gold Trust", "gold", continuous=False, fee_bps=8.0),
+    "QQQ": Instrument("QQQ", "Nasdaq-100 ETF", "etf", continuous=False, fee_bps=5.0),
+    "SMH": Instrument("SMH", "Semiconductor ETF", "etf", continuous=False, fee_bps=5.0),
 }
 
 

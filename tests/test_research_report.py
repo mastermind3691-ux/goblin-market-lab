@@ -1,9 +1,14 @@
 import ast
+import os
+import subprocess
+import sys
 import unittest
 from pathlib import Path
 
 from src.backtest.judge import JudgeResult, SetupEvent
+from src.data.base import DataMeta
 from src.backtest.research_report import build_research_report
+from tools.run_smc_lsr_evaluation import evaluate_symbol
 
 
 def setup(created_i=0):
@@ -121,6 +126,60 @@ class TestResearchReport(unittest.TestCase):
             )
             roots = {name.split(".")[0] for name in modules if name}
             self.assertTrue(prohibited.isdisjoint(roots), path)
+
+    def test_cli_help_runs_directly_without_pythonpath(self):
+        root = Path(__file__).parents[1]
+        env = os.environ.copy()
+        env.pop("PYTHONPATH", None)
+        completed = subprocess.run(
+            [sys.executable, str(root / "tools" / "run_smc_lsr_evaluation.py"), "--help"],
+            cwd=root,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(0, completed.returncode, completed.stderr)
+        self.assertIn("usage: run_smc_lsr_evaluation.py", completed.stdout)
+
+    def test_cli_reports_requested_and_effective_csv_timeframes(self):
+        class FakeCsvAdapter:
+            received_timeframe = None
+
+            def bars(self, symbol, timeframe="1d", limit=500):
+                self.received_timeframe = timeframe
+                return []
+
+            def meta(self, symbol):
+                return DataMeta("fixture", synthetic=False, adjustment="adjusted")
+
+        adapter = FakeCsvAdapter()
+        report = evaluate_symbol(adapter, "GLD", "4H")
+
+        self.assertEqual("4H", report["requested_timeframe"])
+        self.assertEqual("1D", report["effective_timeframe"])
+        self.assertEqual("1D", report["timeframe"])
+        self.assertEqual("1D", adapter.received_timeframe)
+        self.assertTrue(any(
+            warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
+            for warning in report["warnings"]
+        ))
+
+    def test_daily_request_has_no_timeframe_warning(self):
+        class FakeCsvAdapter:
+            def bars(self, symbol, timeframe="1d", limit=500):
+                return []
+
+            def meta(self, symbol):
+                return DataMeta("fixture", synthetic=False, adjustment="adjusted")
+
+        report = evaluate_symbol(FakeCsvAdapter(), "SPY", "daily")
+        self.assertEqual("daily", report["requested_timeframe"])
+        self.assertEqual("1D", report["effective_timeframe"])
+        self.assertFalse(any(
+            warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
+            for warning in report["warnings"]
+        ))
 
 
 if __name__ == "__main__":

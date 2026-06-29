@@ -53,6 +53,7 @@ def evaluate_symbol(
         "synthetic": meta.synthetic,
         "adjustment": meta.adjustment,
     }
+    report["warnings"].extend(selection.warnings)
     if meta.synthetic:
         report["warnings"].append(
             "PIPELINE_VALIDATION_ONLY: synthetic data is not research evidence."

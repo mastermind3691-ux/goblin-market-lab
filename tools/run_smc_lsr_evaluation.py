@@ -18,7 +18,7 @@ if REPO_ROOT not in sys.path:
 
 from src.backtest.judge import judge_setup
 from src.backtest.research_report import build_research_report
-from src.data.csv_adapter import CsvAdapter
+from src.data.timeframe_csv_adapter import TimeframeCsvAdapter, normalize_timeframe
 from src.instruments.registry import INSTRUMENTS
 from src.strategies.smc_liquidity_sweep_reversion import (
     CANDIDATE_NAME,
@@ -29,29 +29,25 @@ from src.strategies.smc_liquidity_sweep_reversion import (
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(REPO_ROOT, "data"))
 REAL_DIR = os.path.join(DATA_DIR, "real")
-CSV_EFFECTIVE_TIMEFRAME = "1D"
-
-
 def evaluate_symbol(
-    adapter: CsvAdapter,
+    adapter: TimeframeCsvAdapter,
     symbol: str,
     timeframe: str = "1d",
 ) -> dict:
     requested_timeframe = timeframe
-    bars = adapter.bars(
-        symbol, timeframe=CSV_EFFECTIVE_TIMEFRAME, limit=999_999
-    )
+    selection = adapter.select(symbol, requested_timeframe, limit=999_999)
+    bars = selection.bars
     setups = generate_smc_liquidity_sweep_setups(
         bars, SMCLiquiditySweepReversionConfig()
     )
     results = [judge_setup(setup, bars) for setup in setups]
     report = build_research_report(
-        symbol, CSV_EFFECTIVE_TIMEFRAME, bars, setups, results
+        symbol, selection.effective_timeframe, bars, setups, results
     )
-    meta = adapter.meta(symbol)
+    meta = selection.meta
     report["strategy"] = CANDIDATE_NAME
     report["requested_timeframe"] = requested_timeframe
-    report["effective_timeframe"] = CSV_EFFECTIVE_TIMEFRAME
+    report["effective_timeframe"] = selection.effective_timeframe
     report["data"] = {
         "source": meta.source,
         "synthetic": meta.synthetic,
@@ -65,10 +61,11 @@ def evaluate_symbol(
         report["warnings"].append(
             f"PRICE_ADJUSTMENT_{meta.adjustment.upper()}: returns may be distorted."
         )
-    if requested_timeframe.strip().lower() not in {"1d", "d", "day", "daily"}:
+    if normalize_timeframe(requested_timeframe) != selection.effective_timeframe:
         report["warnings"].append(
             "REQUESTED_TIMEFRAME_UNAVAILABLE: "
-            f"requested {requested_timeframe}; evaluated available 1D CSV bars."
+            f"requested {requested_timeframe}; evaluated available "
+            f"{selection.effective_timeframe} CSV bars."
         )
     return report
 
@@ -79,11 +76,13 @@ def main() -> None:
     parser.add_argument(
         "--timeframe",
         default="1d",
-        help="requested timeframe; CSV evaluation currently uses available 1D bars",
+        help="requested timeframe; uses verified real 4H data when available",
     )
     args = parser.parse_args()
 
-    adapter = CsvAdapter(DATA_DIR, real_dir=REAL_DIR if os.path.isdir(REAL_DIR) else None)
+    adapter = TimeframeCsvAdapter(
+        DATA_DIR, real_dir=REAL_DIR if os.path.isdir(REAL_DIR) else None
+    )
     symbols = args.symbol or sorted(INSTRUMENTS)
     reports = [evaluate_symbol(adapter, symbol, args.timeframe) for symbol in symbols]
     print(json.dumps(reports, indent=2, sort_keys=True, allow_nan=False))

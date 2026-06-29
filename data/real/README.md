@@ -4,6 +4,34 @@ This directory holds **real** (non-synthetic) daily CSV bars imported via
 `python -m tools.import_csv`. These files take priority over the synthetic
 sample data in `data/`.
 
+## Optional verified 4H research data
+
+The SMC evaluation CLI looks for genuine 4H files at:
+
+```text
+data/real/4h/GLD.csv
+data/real/4h/GLD.meta.json
+data/real/4h/SPY.csv
+data/real/4h/SPY.meta.json
+```
+
+The CSV must use the normal OHLCV columns and full timestamps (for example,
+`2024-01-02T09:30:00`). At least one date must contain multiple bars. The
+sidecar must explicitly declare the timeframe and provenance:
+
+```json
+{
+  "source": "vendor_name",
+  "synthetic": false,
+  "adjustment": "adjusted",
+  "timeframe": "4H"
+}
+```
+
+Missing, synthetic, daily-timestamped, or incorrectly labelled files are not
+treated as 4H data. The CLI falls back to available daily data and emits
+`REQUESTED_TIMEFRAME_UNAVAILABLE`. It never constructs 4H bars from daily bars.
+
 ## Expected CSV format
 
 **Required columns:** `date`, `open`, `high`, `low`, `close`

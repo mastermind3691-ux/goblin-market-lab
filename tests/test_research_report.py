@@ -2,12 +2,14 @@ import ast
 import os
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
 from src.backtest.judge import JudgeResult, SetupEvent
 from src.data.base import DataMeta
 from src.backtest.research_report import build_research_report
+from src.data.timeframe_csv_adapter import CsvDataSelection, TimeframeCsvAdapter
 from tools.run_smc_lsr_evaluation import evaluate_symbol
 
 
@@ -112,6 +114,7 @@ class TestResearchReport(unittest.TestCase):
         root = Path(__file__).parents[1]
         paths = [
             root / "src" / "backtest" / "research_report.py",
+            root / "src" / "data" / "timeframe_csv_adapter.py",
             root / "tools" / "run_smc_lsr_evaluation.py",
         ]
         prohibited = {"dashboard", "broker", "orders", "execution", "live"}
@@ -144,14 +147,10 @@ class TestResearchReport(unittest.TestCase):
 
     def test_cli_reports_requested_and_effective_csv_timeframes(self):
         class FakeCsvAdapter:
-            received_timeframe = None
-
-            def bars(self, symbol, timeframe="1d", limit=500):
-                self.received_timeframe = timeframe
-                return []
-
-            def meta(self, symbol):
-                return DataMeta("fixture", synthetic=False, adjustment="adjusted")
+            def select(self, symbol, timeframe, limit=500):
+                return CsvDataSelection(
+                    [], DataMeta("fixture", False, "adjusted"), "1D"
+                )
 
         adapter = FakeCsvAdapter()
         report = evaluate_symbol(adapter, "GLD", "4H")
@@ -159,7 +158,6 @@ class TestResearchReport(unittest.TestCase):
         self.assertEqual("4H", report["requested_timeframe"])
         self.assertEqual("1D", report["effective_timeframe"])
         self.assertEqual("1D", report["timeframe"])
-        self.assertEqual("1D", adapter.received_timeframe)
         self.assertTrue(any(
             warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
             for warning in report["warnings"]
@@ -167,16 +165,82 @@ class TestResearchReport(unittest.TestCase):
 
     def test_daily_request_has_no_timeframe_warning(self):
         class FakeCsvAdapter:
-            def bars(self, symbol, timeframe="1d", limit=500):
-                return []
-
-            def meta(self, symbol):
-                return DataMeta("fixture", synthetic=False, adjustment="adjusted")
+            def select(self, symbol, timeframe, limit=500):
+                return CsvDataSelection(
+                    [], DataMeta("fixture", False, "adjusted"), "1D"
+                )
 
         report = evaluate_symbol(FakeCsvAdapter(), "SPY", "daily")
         self.assertEqual("daily", report["requested_timeframe"])
         self.assertEqual("1D", report["effective_timeframe"])
         self.assertFalse(any(
+            warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
+            for warning in report["warnings"]
+        ))
+
+    def test_true_4h_csv_is_selected_when_contract_is_satisfied(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            timeframe_dir = root / "real" / "4h"
+            timeframe_dir.mkdir(parents=True)
+            (timeframe_dir / "GLD.csv").write_text(
+                "ts,open,high,low,close,volume\n"
+                "2024-01-02T09:30:00,100,102,99,101,10\n"
+                "2024-01-02T13:30:00,101,103,100,102,12\n",
+                encoding="utf-8",
+            )
+            (timeframe_dir / "GLD.meta.json").write_text(
+                '{"source":"fixture_4h","synthetic":false,'
+                '"adjustment":"adjusted","timeframe":"4H"}',
+                encoding="utf-8",
+            )
+
+            report = evaluate_symbol(TimeframeCsvAdapter(str(root)), "GLD", "4H")
+
+        self.assertEqual("4H", report["requested_timeframe"])
+        self.assertEqual("4H", report["effective_timeframe"])
+        self.assertEqual("4H", report["timeframe"])
+        self.assertEqual("fixture_4h", report["data"]["source"])
+        self.assertFalse(report["data"]["synthetic"])
+        self.assertEqual("adjusted", report["data"]["adjustment"])
+        self.assertFalse(any(
+            warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
+            for warning in report["warnings"]
+        ))
+
+    def test_synthetic_4h_csv_is_not_selected(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            real_dir = root / "real"
+            timeframe_dir = real_dir / "4h"
+            timeframe_dir.mkdir(parents=True)
+            csv_text = (
+                "ts,open,high,low,close,volume\n"
+                "2024-01-02T09:30:00,100,102,99,101,10\n"
+                "2024-01-02T13:30:00,101,103,100,102,12\n"
+            )
+            (timeframe_dir / "SPY.csv").write_text(csv_text, encoding="utf-8")
+            (timeframe_dir / "SPY.meta.json").write_text(
+                '{"source":"synthetic_fixture","synthetic":true,'
+                '"adjustment":"unknown","timeframe":"4H"}',
+                encoding="utf-8",
+            )
+            (real_dir / "SPY.csv").write_text(
+                "date,open,high,low,close,volume\n"
+                "2024-01-02,100,102,99,101,10\n",
+                encoding="utf-8",
+            )
+            (real_dir / "SPY.meta.json").write_text(
+                '{"source":"daily_fixture","synthetic":false,'
+                '"adjustment":"unknown"}',
+                encoding="utf-8",
+            )
+
+            report = evaluate_symbol(TimeframeCsvAdapter(str(root)), "SPY", "4H")
+
+        self.assertEqual("1D", report["effective_timeframe"])
+        self.assertEqual("daily_fixture", report["data"]["source"])
+        self.assertTrue(any(
             warning.startswith("REQUESTED_TIMEFRAME_UNAVAILABLE")
             for warning in report["warnings"]
         ))

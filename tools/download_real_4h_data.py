@@ -25,7 +25,7 @@ from src.data.four_hour_csv import validate_4h_csv_text
 from tools.prepare_real_4h_data import four_hour_data_dir, import_real_4h_csv
 
 
-SUPPORTED_SYMBOLS = ("GLD", "SPY")
+SUPPORTED_SYMBOLS = ("GLD", "IAU", "QQQ", "SMH", "SPY")
 MARKET_TIMEZONE = "America/New_York"
 
 
@@ -144,7 +144,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--symbol", action="append", choices=SUPPORTED_SYMBOLS,
-        help="symbol to download; repeat as needed (default: GLD and SPY)",
+        help="symbol to download; repeat as needed (default: all supported)",
     )
     parser.add_argument(
         "--period", default="730d",

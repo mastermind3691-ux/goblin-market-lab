@@ -269,14 +269,14 @@ class TestAdminRefresh(unittest.TestCase):
              patch.object(web_app, "run_forward_observation") as shadow:
             refresh.return_value = {
                 "primary_source": "tiingo",
-                "symbols": ["SPY", "GLD"],
-                "source_used": {"SPY": "tiingo", "GLD": "tiingo"},
-                "fallback_source_used": {"SPY": None, "GLD": None},
+                "symbols": ["SPY", "GLD", "IAU", "QQQ", "SMH"],
+                "source_used": {"SPY": "tiingo", "GLD": "tiingo", "IAU": "tiingo", "QQQ": "tiingo", "SMH": "tiingo"},
+                "fallback_source_used": {"SPY": None, "GLD": None, "IAU": None, "QQQ": None, "SMH": None},
                 "fallback_reason": {},
                 "output_dir": "/mnt/data/real",
-                "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "latest_bar_date": {"SPY": "2026-06-22", "GLD": "2026-06-22", "IAU": "2026-06-22", "QQQ": "2026-06-22", "SMH": "2026-06-22"},
                 "latest_vendor_row_date": {
-                    "SPY": "2026-06-23", "GLD": "2026-06-23",
+                    "SPY": "2026-06-23", "GLD": "2026-06-23", "IAU": "2026-06-23", "QQQ": "2026-06-23", "SMH": "2026-06-23",
                 },
                 "excluded_vendor_rows": [{
                     "symbol": "SPY",
@@ -290,8 +290,8 @@ class TestAdminRefresh(unittest.TestCase):
                 "historical_bootstrap": 429,
                 "forward_observed": 0,
                 "forward_observation_started": True,
-                "forward_started_after": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
-                "forward_observed_through": {"SPY": "2026-06-22", "GLD": "2026-06-22"},
+                "forward_started_after": {"SPY": "2026-06-22", "GLD": "2026-06-22", "IAU": "2026-06-22", "QQQ": "2026-06-22", "SMH": "2026-06-22"},
+                "forward_observed_through": {"SPY": "2026-06-22", "GLD": "2026-06-22", "IAU": "2026-06-22", "QQQ": "2026-06-22", "SMH": "2026-06-22"},
                 "new_forward_records_last_run": 0,
                 "forward_sample_size": 0,
                 "enough_forward_data": False,
@@ -303,7 +303,7 @@ class TestAdminRefresh(unittest.TestCase):
         payload = response.get_json()
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["can_place_orders"])
-        self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD"])
+        self.assertEqual(payload["symbols_refreshed"], ["SPY", "GLD", "IAU", "QQQ", "SMH"])
         self.assertEqual(payload["primary_source"], "tiingo")
         self.assertEqual(payload["source_used"]["SPY"], "tiingo")
         self.assertEqual(payload["latest_bar_date"]["SPY"], "2026-06-22")
@@ -313,7 +313,7 @@ class TestAdminRefresh(unittest.TestCase):
         self.assertTrue(payload["forward_observation_started"])
         self.assertEqual(payload["new_forward_records_last_run"], 0)
         refresh.assert_called_once_with(
-            ["SPY", "GLD"], "2000-01-01",
+            ["SPY", "GLD", "IAU", "QQQ", "SMH"], "2000-01-01",
             output_dir="/mnt/data/real", write_raw=False,
         )
         shadow.assert_called_once_with(

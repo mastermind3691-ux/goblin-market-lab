@@ -32,7 +32,7 @@ from tools.run_shadow_tracking import run_forward_observation, shadow_state_path
 
 DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(__file__), "..", "..", "data"))
 REFRESH_ACTION_HEADER = "refresh-market-data"
-REFRESH_SYMBOLS = ["SPY", "GLD"]
+REFRESH_SYMBOLS = list(INSTRUMENTS.keys())
 REFRESH_START = "2000-01-01"
 _refresh_lock = threading.Lock()
 

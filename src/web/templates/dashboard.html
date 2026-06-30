@@ -332,8 +332,14 @@
 
     .foot { margin-top:22px; text-align:center; color:var(--muted); font-size:12px; line-height:1.6; }
 
+    details[data-research-archive] summary { list-style:none; }
+    details[data-research-archive] summary::-webkit-details-marker { display:none; }
+    details[data-research-archive] summary::before { content:"▸ "; }
+    details[data-research-archive][open] summary::before { content:"▾ "; }
+
     @media (max-width: 760px) {
       body { padding:13px; }
+      .card { padding:13px; }
       .hero { grid-template-columns:1fr; }
       h1 { font-size:23px; }
       .hero-ring { width:90px; height:90px; }
@@ -413,6 +419,16 @@
           <span class="pill safe"><span class="tick">●</span> Order placement locked</span>
           <span class="pill muted">{{ summary.outcome.historical }}</span>
         </div>
+
+        <!-- candidate-snapshot-start -->
+        <div class="hero-row compact" data-candidate-snapshot>
+          <span class="pill accent">Mode: Research-only</span>
+          <span class="pill watch">Candidate: Sweep&rarr;MSS Long-only</span>
+          <span class="pill warn">WEAK_SAMPLE_RESEARCH_CANDIDATE</span>
+          <span class="pill muted">Action: Forward watch only</span>
+        </div>
+        <p class="muted" style="margin-top:8px">Not proven. No trading approval.</p>
+        <!-- candidate-snapshot-end -->
 
         <div class="notice {% if forward_observations > 0 %}safe{% endif %}">
           <span class="dot"></span>
@@ -508,6 +524,69 @@
         <p class="muted" style="margin-top:12px">Paper-only by design. The guarantees above are structural, not toggles. {{ safety.verdict }}</p>
       </div>
     </section>
+
+    <!-- candidate-card-start -->
+    <section class="section">
+      <div class="section-head"><h2>Active research candidate</h2></div>
+      <div class="card">
+        <div class="headline">Sweep&rarr;MSS Long-only</div>
+        <div class="chip-row">
+          <span class="pill warn">WEAK_SAMPLE_RESEARCH_CANDIDATE</span>
+          <span class="pill muted">Forward watch only</span>
+        </div>
+        <p class="muted">Config: pivot 5/2 &middot; MSS expiry 16 &middot; target 2R &middot; no FVG</p>
+        <div class="keyline score-metrics">
+          <div><span>Resolved</span><strong>34</strong></div>
+          <div><span>W / L</span><strong>21 / 13</strong></div>
+          <div><span>Net R</span><strong>+29</strong></div>
+          <div><span>Profit factor</span><strong>3.23</strong></div>
+        </div>
+        <div class="chip-row" style="margin-top:10px">
+          <span class="pill watch">weak sample</span>
+          <span class="pill watch">correlated ETFs</span>
+          <span class="pill watch">adjustment unknown</span>
+          <span class="pill watch">SMH negative</span>
+          <span class="pill watch">chosen after side split</span>
+        </div>
+        <p class="muted" style="margin-top:10px">Next step: forward observation, no tuning. Not proven. No trading approval.</p>
+      </div>
+    </section>
+    <!-- candidate-card-end -->
+
+    <!-- forward-watch-card-start -->
+    <section class="section">
+      <div class="section-head"><h2>Forward watch</h2></div>
+      <div class="card">
+        <div class="chip-row">
+          <span class="pill muted">forward observations: 0</span>
+        </div>
+        <p class="muted">Latest observed setup: none</p>
+        <p class="muted">Latest outcome: none</p>
+        <p class="muted">No new forward setup yet.</p>
+      </div>
+    </section>
+    <!-- forward-watch-card-end -->
+
+    <!-- data-status-card-start -->
+    <section class="section">
+      <div class="section-head"><h2>Data status</h2></div>
+      <div class="card">
+        <div class="chip-row">
+          <span class="pill muted">GLD</span>
+          <span class="pill muted">IAU</span>
+          <span class="pill muted">SPY</span>
+          <span class="pill muted">QQQ</span>
+          <span class="pill muted">SMH</span>
+        </div>
+        <p class="muted">Real 4H data &middot; source: yfinance 1H resampled to 4H &middot; adjustment: unknown</p>
+        <p class="muted">Caveat: final RTH session bucket may be shorter than four bars (6.5h sessions).</p>
+        <p class="muted">Latest range: see data/real/4h/*.meta.json per symbol.</p>
+      </div>
+    </section>
+    <!-- data-status-card-end -->
+
+    <details class="section" data-research-archive>
+      <summary style="cursor:pointer; padding:10px 4px; font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; color:var(--muted);">Research archive (older signals, collapsed)</summary>
 
     <section class="section">
       <div class="section-head">
@@ -715,6 +794,8 @@
         {% endfor %}
       </div>
     </section>
+
+    </details>
 
     <p class="foot">Goblin Market Lab · paper-only research · no live trading, no orders, no leverage.</p>
   </main>
